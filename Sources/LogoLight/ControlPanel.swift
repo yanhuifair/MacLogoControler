@@ -338,7 +338,10 @@ private struct PanelContent: View {
                        in: 0...1, onEditingChanged: { model.dragBrightness($0) })
                     .labelsHidden()
                     .accessibilityLabel("Brightness")
-                    .disabled(!state.canChangeBrightness)
+                    .allowsHitTesting(state.canChangeBrightness)
+                    // It still shows the charge while the battery sets the brightness: faded, so it's
+                    // plain it can't be moved, and the track keeps its colour on a light card.
+                    .opacity(state.canChangeBrightness ? 1 : 0.5)
                 Image(systemName: "sun.max.fill")
                     .font(.system(size: 15))
                     .foregroundStyle(.secondary)
@@ -491,8 +494,11 @@ private struct PanelRow<Control: View>: View {
                 .opacity(isGreyed ? PanelMetrics.greyedAlpha : 1)
                 .padding(.leading, PanelMetrics.tileInset)
                 .frame(maxWidth: .infinity, alignment: .leading)
+            // Not `.disabled`: SwiftUI fades a disabled switch's track until it's gone on a light card.
+            // A little fade of our own keeps its shape while saying it's out of reach.
             control
-                .disabled(isGreyed)
+                .allowsHitTesting(!isGreyed)
+                .opacity(isGreyed ? 0.7 : 1)
                 .padding(.leading, PanelMetrics.labelSpacing)
         }
         .padding(.leading, PanelMetrics.tileInset)
