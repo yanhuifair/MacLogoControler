@@ -131,9 +131,8 @@ private enum PanelMetrics {
     /// and its label. A hairline between rows stops this far short of the trailing edge too.
     static let controlInset: CGFloat = 8
     static let labelSpacing: CGFloat = 4
-    /// The corners of the cards, and of the panel's own background around them.
-    static let cardRadius: CGFloat = 10
-    static let windowRadius: CGFloat = 12
+    /// The corners of the cards: rounder than before, as macOS 26 and later draw them.
+    static let cardRadius: CGFloat = 13
     /// Between one group and the next group's header, and between a header and its card.
     static let headerSpacing: CGFloat = 8
     static let headerToCard: CGFloat = 4
@@ -323,7 +322,6 @@ private struct PanelContent: View {
         .padding(.bottom, PanelMetrics.inset)
         .padding(.horizontal, PanelMetrics.inset)
         .frame(width: PanelMetrics.width, alignment: .top)
-        .background(PanelBackground())
     }
 
     // MARK: - The brightness, the battery and the charging light
@@ -469,7 +467,7 @@ private struct PanelCard<Content: View>: View {
     var body: some View {
         VStack(spacing: 0) { content }
             .frame(maxWidth: .infinity)
-            .background(CardBackground())
+            .background(GlassMaterial())
     }
 }
 
@@ -549,61 +547,32 @@ private struct GroupHeader: View {
 
 /// The hairline between rows: from the text column to the trailing inset, as in System Settings.
 private struct RowSeparator: View {
-    @Environment(\.colorScheme) private var colorScheme
-
     var body: some View {
         Rectangle()
-            .fill(PanelPalette.separator(colorScheme))
+            .fill(Color(nsColor: .separatorColor))
             .frame(height: 1)
             .padding(.leading, PanelMetrics.textColumn)
             .padding(.trailing, PanelMetrics.controlInset)
     }
 }
 
-/// The colours System Settings draws with, sampled from it: its window (the panel's background) and its
-/// lists (the cards), in either appearance.
-private enum PanelPalette {
-    /// #1E1E1E in the dark, #ECECEC in the light.
-    static func window(_ scheme: ColorScheme) -> Color {
-        scheme == .dark ? Color(red: 30 / 255, green: 30 / 255, blue: 30 / 255)
-            : Color(red: 236 / 255, green: 236 / 255, blue: 236 / 255)
-    }
-
-    /// #252525 in the dark (seven levels above the window, as System Settings has it), #FFFFFF in the light.
-    static func card(_ scheme: ColorScheme) -> Color {
-        scheme == .dark ? Color(red: 37 / 255, green: 37 / 255, blue: 37 / 255) : .white
-    }
-
-    /// The hairline around the window, so the panel stands out from the menu behind it, and the one
-    /// between rows (#2F2F2F in the dark, as System Settings draws it).
-    static func edge(_ scheme: ColorScheme) -> Color {
-        scheme == .dark ? Color.white.opacity(0.08) : Color.black.opacity(0.10)
-    }
-
-    static func separator(_ scheme: ColorScheme) -> Color {
-        scheme == .dark ? Color(red: 47 / 255, green: 47 / 255, blue: 47 / 255) : Color.black.opacity(0.09)
-    }
-}
-
-/// The panel's own background: System Settings' window colour, with its corners.
-private struct PanelBackground: View {
+/// The lit, translucent material macOS 26 and later draw their settings' groups on: a soft gradient, and a
+/// hairline rim that's lit at the top and fades toward the bottom, as light falls on an edge.
+private struct GlassMaterial: View {
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        let shape = RoundedRectangle(cornerRadius: PanelMetrics.windowRadius, style: .continuous)
+        let shape = RoundedRectangle(cornerRadius: PanelMetrics.cardRadius, style: .continuous)
+        let isDark = colorScheme == .dark
+        let fill = isDark
+            ? [Color.white.opacity(0.155), Color.white.opacity(0.075)]
+            : [Color.white.opacity(0.92), Color.white.opacity(0.7)]
+        let rim = isDark
+            ? [Color.white.opacity(0.26), Color.white.opacity(0.04)]
+            : [Color.black.opacity(0.10), Color.black.opacity(0.02)]
         shape
-            .fill(PanelPalette.window(colorScheme))
-            .overlay(shape.strokeBorder(PanelPalette.edge(colorScheme), lineWidth: 1))
-    }
-}
-
-/// A card's background: System Settings' list colour.
-private struct CardBackground: View {
-    @Environment(\.colorScheme) private var colorScheme
-
-    var body: some View {
-        RoundedRectangle(cornerRadius: PanelMetrics.cardRadius, style: .continuous)
-            .fill(PanelPalette.card(colorScheme))
+            .fill(LinearGradient(colors: fill, startPoint: .top, endPoint: .bottom))
+            .overlay(shape.strokeBorder(LinearGradient(colors: rim, startPoint: .top, endPoint: .bottom), lineWidth: 1))
     }
 }
 
