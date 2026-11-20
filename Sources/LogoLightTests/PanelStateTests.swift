@@ -16,7 +16,8 @@ func panelStateTests(_ t: TestHarness) {
         t.expect(state.canAdjust)
         t.expectEqual(state.effect, .pulse)
         t.expectEqual(state.brightness, 0.4)
-        t.expectEqual(state.symbolName, "lightbulb.fill")
+        t.expectEqual(state.symbolDescription, "Logo illumination on")
+        t.expect(!state.isDimmed)
     }
 
     t.test("the Sound effect shows only where the sound can be heard, with the other adjustments") {
@@ -35,14 +36,16 @@ func panelStateTests(_ t: TestHarness) {
         t.expect(!state.canAdjust, "greyed out")
         t.expectEqual(state.effect, .breathe)
         t.expectEqual(state.brightness, 0.3)
-        t.expectEqual(state.symbolName, "lightbulb.slash")
+        t.expectEqual(state.symbolDescription, "Logo illumination off")
+        t.expect(state.isDimmed)
     }
 
     t.test("an unknown setting counts as on") {
         let state = PanelState(status: status(nil), canControlDirectly: true, effect: .none, brightness: 1)
         t.expect(state.isOn)
         t.expect(state.canAdjust)
-        t.expectEqual(state.symbolName, "lightbulb")
+        t.expectEqual(state.symbolDescription, "Logo illumination unknown")
+        t.expect(!state.isDimmed)
     }
 
     t.test("following the battery greys out only the slider, which shows the charge") {
@@ -95,7 +98,8 @@ func panelStateTests(_ t: TestHarness) {
         t.expect(state.isOn)
         t.expect(state.canAdjust)
         t.expect(state.canSwitch, "the switch keeps taking flips")
-        t.expectEqual(state.symbolName, "lightbulb.fill")
+        t.expectEqual(state.symbolDescription, "Logo illumination on")
+        t.expect(!state.isDimmed)
     }
 
     t.test("turning off shows off at once: the brightness and effects grey out before the fade ends") {
@@ -104,7 +108,8 @@ func panelStateTests(_ t: TestHarness) {
         t.expect(!state.isOn)
         t.expect(!state.canAdjust)
         t.expectEqual(state.effect, .pulse)
-        t.expectEqual(state.symbolName, "lightbulb.slash")
+        t.expectEqual(state.symbolDescription, "Logo illumination off")
+        t.expect(state.isDimmed)
     }
 
     t.test("a Mac without the logo says why, with the logo off and nothing to adjust") {
@@ -113,8 +118,8 @@ func panelStateTests(_ t: TestHarness) {
         t.expect(!state.isOn)
         t.expect(!state.showsAdjustments)
         t.expectEqual(state.message, "Needs a MacBook Pro with PROLED XDR Display")
-        t.expectEqual(state.symbolName, "lightbulb.slash")
         t.expectEqual(state.symbolDescription, "No illuminated logo on this Mac")
+        t.expect(state.isDimmed)
     }
 
     t.test("there's no text in the panel on a Mac with the logo") {

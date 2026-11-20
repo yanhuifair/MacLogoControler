@@ -29,9 +29,10 @@ public struct PanelState: Equatable, Sendable {
     public var morseLoops: Bool
     /// The only text in the panel: why everything is disabled, on a Mac without the logo.
     public var message: String?
-    /// The menu bar icon (an SF Symbols name), and what it means.
-    public var symbolName: String
+    /// What the menu bar item is showing, for its tooltip and VoiceOver.
     public var symbolDescription: String
+    /// Whether the menu bar item is drawn dimmed: the logo off, or a Mac without one.
+    public var isDimmed: Bool
 
     /// `requested` is the setting asked for while a switch is under way, which the panel and the icon show
     /// straight away, so the rest of the panel follows the switch at once instead of when the fade ends.
@@ -52,11 +53,11 @@ public struct PanelState: Equatable, Sendable {
         self.morse = canControlDirectly ? morse : nil
         self.morseLoops = morseLoops
         message = status.isSupported ? nil : "Needs a MacBook Pro with PROLED XDR Display"
-        (symbolName, symbolDescription) = switch (status.isSupported, setting) {
-        case (false, _): ("lightbulb.slash", "No illuminated logo on this Mac")
-        case (true, .off): ("lightbulb.slash", "Logo illumination off")
-        case (true, .on): ("lightbulb.fill", "Logo illumination on")
-        case (true, nil): ("lightbulb", "Logo illumination unknown")
+        (symbolDescription, isDimmed) = switch (status.isSupported, setting) {
+        case (false, _): ("No illuminated logo on this Mac", true)
+        case (true, .off): ("Logo illumination off", true)
+        case (true, .on): ("Logo illumination on", false)
+        case (true, nil): ("Logo illumination unknown", false)
         }
     }
 

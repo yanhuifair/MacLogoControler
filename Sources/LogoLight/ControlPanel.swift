@@ -822,7 +822,7 @@ enum PanelRenderer {
                 draw(preview, options: options, background: nil, to: "\(folder)/\(name).png")
             }
         }
-        if options.icon, let symbol = NSImage(systemSymbolName: on.symbolName, accessibilityDescription: nil) {
+        if options.icon, let symbol = NSImage(systemSymbolName: MenuBarIcon.symbolName, accessibilityDescription: nil) {
             // The status item's button draws its template image at its own size, in the menu bar's text colour.
             let icon = NSImageView(image: symbol)
             icon.contentTintColor = .black

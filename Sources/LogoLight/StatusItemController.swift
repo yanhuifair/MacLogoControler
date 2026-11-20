@@ -43,8 +43,8 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     /// rather than on every refresh.
     private var isLaunchAtLoginEnabled = false
     private var isPasswordlessEnabled = false
-    /// The menu bar icon's symbol and description, so it's only replaced when they change.
-    private var iconSymbol: (name: String, description: String)?
+    /// The menu bar icon's description and look, so it's only replaced when they change.
+    private var iconSymbol: (description: String, isDimmed: Bool)?
     private var observers: [NSObjectProtocol] = []
     /// Reads whether the built-in display is awake, for screen changes.
     private let displayReader = LogoStatusReader()
@@ -357,13 +357,12 @@ final class StatusItemController: NSObject, NSMenuDelegate {
 
     private func updateIcon(_ state: PanelState) {
         guard let button = statusItem.button,
-              iconSymbol?.name != state.symbolName || iconSymbol?.description != state.symbolDescription
+              iconSymbol?.description != state.symbolDescription || iconSymbol?.isDimmed != state.isDimmed
         else { return }
-        iconSymbol = (state.symbolName, state.symbolDescription)
-        let image = NSImage(systemSymbolName: state.symbolName, accessibilityDescription: state.symbolDescription)
-        image?.isTemplate = true
-        button.image = image
-        button.appearsDisabled = !state.isSupported
+        iconSymbol = (state.symbolDescription, state.isDimmed)
+        let icon = MenuBarIcon.image(for: state)
+        button.image = icon.image
+        button.appearsDisabled = icon.isDimmed
         button.toolTip = "LogoLight: \(state.symbolDescription)\nOption-click to toggle"
     }
 
