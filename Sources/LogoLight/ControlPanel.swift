@@ -1,10 +1,11 @@
 import AppKit
 import LogoLightCore
+import SwiftUI
 
-/// The panel at the top of the menu, in the style of a Control Center module on macOS 27: groups of rows
-/// on glass, a switch for the logo first, where it's easiest to reach, then a live view of it, a brightness
-/// slider with the Battery and Charging switches under it, then a switch for each effect. Everything below
-/// the live view is greyed out while the logo is off, and the slider is while the battery sets the brightness.
+/// The panel at the top of the menu, in the style of System Settings on macOS 27: groups of rows on glass,
+/// a switch for the logo first, where it's easiest to reach, then a live view of it, a brightness slider
+/// with the Battery and Charging switches under it, then a switch for each effect. Everything below the
+/// live view is greyed out while the logo is off, and the slider is while the battery sets the brightness.
 @MainActor
 final class ControlPanel: NSView {
     var onLogoSwitched: ((Bool) -> Void)?
@@ -21,10 +22,10 @@ final class ControlPanel: NSView {
     /// The message edited (to remember it for next time).
     var onMorseTextChanged: ((String) -> Void)?
 
-    /// As narrow as it can be with AppKit's switch, which is 54 wide. The longest label, "Heartbeat"
-    /// (61 pt at 13 pt, 64 with Bold Text), still fits between its tile and its switch, which leave it
-    /// 68. The menu's own items need only 143, or 153 with Disable Password.
-    private static let width: CGFloat = 186
+    /// As narrow as the menu's own items allow (they need 153 with Disable Password, and the menu is as
+    /// wide as its widest item). The longest label, "Heartbeat" (61 pt at 13 pt, 64 with Bold Text),
+    /// still fits between its tile and its switch, which leave it 72.
+    private static let width: CGFloat = 172
     /// Around the panel's contents (9 at the top), and between its sections.
     private static let inset: CGFloat = 6
     private static let topInset: CGFloat = 9
@@ -33,8 +34,8 @@ final class ControlPanel: NSView {
     private static let cardWidth = width - 2 * inset
     /// How far text outside the cards is indented, on both sides.
     private static let textIndent: CGFloat = 12
-    /// A row: the height of a row in System Settings' lists.
-    private static let rowHeight: CGFloat = 34
+    /// A row: as tall as a row in System Settings' lists, a little tighter for a menu.
+    private static let rowHeight: CGFloat = 36
     /// Where row text starts inside a card.
     fileprivate static let textColumn: CGFloat = 40
     /// Where the icon tiles start inside a card, and their size.
@@ -59,7 +60,7 @@ final class ControlPanel: NSView {
     private lazy var previewWell = PreviewWell(content: preview)
     private let logoTile = IconTile(symbol: "lightbulb.fill", color: .systemOrange)
     private let logoLabel = NSTextField(labelWithString: "LogoLight")
-    private let logoSwitch = NSSwitch()
+    private let logoSwitch = SwitchToggle(isOn: false, label: "Apple logo backlight")
     private let brightnessCard = Card()
     private let brightnessRow = NSView()
     private let dimIcon = NSImageView()
@@ -68,12 +69,12 @@ final class ControlPanel: NSView {
     /// Under the slider, in its card: the battery indicator, which has the brightness follow the charge.
     private let batteryTile = IconTile(symbol: "battery.75percent", color: .systemGreen)
     private let batteryLabel = NSTextField(labelWithString: "Battery")
-    private let batterySwitch = NSSwitch()
+    private let batterySwitch = SwitchToggle(isOn: false, label: "Brightness follows battery")
     private var batteryRow = NSView()
     /// Under it: the charging light, which has the logo breathe while the battery charges.
     private let chargingTile = IconTile(symbol: "bolt.fill", color: .systemYellow)
     private let chargingLabel = NSTextField(labelWithString: "Charging")
-    private let chargingSwitch = NSSwitch()
+    private let chargingSwitch = SwitchToggle(isOn: false, label: "Breathe while charging")
     private var chargingRow = NSView()
     private let messageLabel = NSTextField(wrappingLabelWithString: "")
     private let effectsHeader = NSTextField(labelWithString: "Effects")
@@ -81,7 +82,7 @@ final class ControlPanel: NSView {
     private let messageContainer = NSStackView()
     private let effectsHeaderContainer = NSStackView()
     private let effectsCard = Card()
-    private var effectRows: [(effect: LogoEffect, tile: IconTile, label: NSTextField, toggle: NSSwitch)] = []
+    private var effectRows: [(effect: LogoEffect, tile: IconTile, label: NSTextField, toggle: SwitchToggle)] = []
     /// The Sound effect's row and the hairline above it, hidden where the sound can't be heard.
     private var soundRows: [NSView] = []
     private let morseHeader = NSTextField(labelWithString: "Morse Code")
@@ -181,10 +182,9 @@ final class ControlPanel: NSView {
     }
 
     /// Sets a switch to `on`, animating its knob when the panel is on screen.
-    private func set(_ toggle: NSSwitch, on: Bool, animated: Bool) {
-        let state: NSControl.StateValue = on ? .on : .off
-        guard toggle.state != state else { return }
-        if animated { toggle.animator().state = state } else { toggle.state = state }
+    private func set(_ toggle: SwitchToggle, on: Bool, animated: Bool) {
+        guard toggle.isOn != on else { return }
+        toggle.set(on: on, animated: animated)
     }
 
     // MARK: - Layout
@@ -204,9 +204,7 @@ final class ControlPanel: NSView {
 
         // The logo: on/off at the top, where the user wanted it (easier to reach than below the live
         // view), then the live view, then the brightness.
-        logoSwitch.target = self
-        logoSwitch.action = #selector(logoSwitchChanged)
-        logoSwitch.setAccessibilityLabel("Apple logo backlight")
+        logoSwitch.onChange = { [weak self] in self?.onLogoSwitched?($0) }
         let logoCard = Card()
         logoCard.add([row(tile: logoTile, label: logoLabel, toggle: logoSwitch)])
         addFullWidth(logoCard)
@@ -221,14 +219,10 @@ final class ControlPanel: NSView {
         brightnessSlider.action = #selector(brightnessChanged)
         brightnessSlider.setAccessibilityLabel("Brightness")
         layOutBrightnessRow()
-        batterySwitch.target = self
-        batterySwitch.action = #selector(batterySwitchChanged)
-        batterySwitch.setAccessibilityLabel("Brightness follows battery")
+        batterySwitch.onChange = { [weak self] in self?.onFollowsBatteryChanged?($0) }
         batteryRow = row(tile: batteryTile, label: batteryLabel, toggle: batterySwitch)
         batteryRow.toolTip = "The logo shows the battery's charge: normal brightness when it's full, dimmer as it runs down."
-        chargingSwitch.target = self
-        chargingSwitch.action = #selector(chargingSwitchChanged)
-        chargingSwitch.setAccessibilityLabel("Breathe while charging")
+        chargingSwitch.onChange = { [weak self] in self?.onBreathesWhileChargingChanged?($0) }
         chargingRow = row(tile: chargingTile, label: chargingLabel, toggle: chargingSwitch)
         chargingRow.toolTip = "While the battery charges, the logo breathes like the old MacBook sleep light, then goes back to your effect."
         brightnessCard.add([brightnessRow, Separator(), batteryRow, Separator(), chargingRow])
@@ -243,8 +237,8 @@ final class ControlPanel: NSView {
 
         // Effects: one switch each; at most one is on. Sound (the logo follows the sound the Mac
         // plays) is last, and only where the sound can be heard.
-        effectsHeader.font = .systemFont(ofSize: NSFont.smallSystemFontSize, weight: .semibold)
-        effectsHeader.textColor = .secondaryLabelColor
+        effectsHeader.font = .systemFont(ofSize: 13, weight: .semibold)
+        effectsHeader.textColor = .labelColor
         addIndented(effectsHeader, in: effectsHeaderContainer, topSpacing: Self.headerSpacing)
         stack.setCustomSpacing(Self.headerToCardSpacing, after: effectsHeaderContainer)
 
@@ -252,10 +246,8 @@ final class ControlPanel: NSView {
         for effect in LogoEffect.allCases where effect != .none {
             let tile = IconTile(symbol: Self.symbolName(for: effect), color: Self.color(for: effect))
             let label = NSTextField(labelWithString: effect.title)
-            let toggle = NSSwitch()
-            toggle.target = self
-            toggle.action = #selector(effectSwitchChanged(_:))
-            toggle.setAccessibilityLabel(effect.title)
+            let toggle = SwitchToggle(isOn: false, label: effect.title)
+            toggle.onChange = { [weak self] isOn in self?.choose(effect, isOn: isOn) }
             effectRows.append((effect, tile, label, toggle))
             if !rows.isEmpty { rows.append(Separator()) }
             let row = row(tile: tile, label: label, toggle: toggle)
@@ -335,7 +327,7 @@ final class ControlPanel: NSView {
         morseField.toolTip = notation.isEmpty ? "Letters, digits and punctuation" : notation
     }
 
-    private func row(tile: IconTile, label: NSTextField, toggle: NSSwitch) -> NSView {
+    private func row(tile: IconTile, label: NSTextField, toggle: SwitchToggle) -> NSView {
         label.font = .systemFont(ofSize: 13)
         label.lineBreakMode = .byTruncatingTail
 
@@ -397,20 +389,8 @@ final class ControlPanel: NSView {
 
     // MARK: - Actions
 
-    @objc private func logoSwitchChanged() {
-        onLogoSwitched?(logoSwitch.state == .on)
-    }
-
     @objc private func brightnessChanged() {
         onBrightnessChanged?(brightnessSlider.doubleValue)
-    }
-
-    @objc private func batterySwitchChanged() {
-        onFollowsBatteryChanged?(batterySwitch.state == .on)
-    }
-
-    @objc private func chargingSwitchChanged() {
-        onBreathesWhileChargingChanged?(chargingSwitch.state == .on)
     }
 
     @objc private func playPressed() {
@@ -431,11 +411,9 @@ final class ControlPanel: NSView {
         onMorsePlay?(morseField.stringValue)
     }
 
-    @objc private func effectSwitchChanged(_ sender: NSSwitch) {
-        guard let row = effectRows.first(where: { $0.toggle === sender }) else { return }
-        let effect: LogoEffect = sender.state == .on ? row.effect : .none
-        for other in effectRows where other.toggle !== sender { set(other.toggle, on: false, animated: true) }
-        onEffectChosen?(effect)
+    private func choose(_ effect: LogoEffect, isOn: Bool) {
+        for other in effectRows where other.effect != effect { set(other.toggle, on: false, animated: true) }
+        onEffectChosen?(isOn ? effect : .none)
     }
 
     // MARK: - Styling
@@ -751,6 +729,92 @@ private final class IconTile: NSView {
                            in: context, from: CGPoint(x: bounds.midX, y: bounds.minY),
                            to: CGPoint(x: bounds.midX, y: bounds.maxY))
         context.restoreGState()
+    }
+}
+
+/// The state of one of the panel's switches: what it shows, whether it takes clicks, and what to tell
+/// the panel when the user flips it.
+@MainActor
+private final class SwitchState: ObservableObject {
+    @Published var isOn: Bool
+    @Published var isEnabled = true
+    /// Called when the user flips it, not when the panel sets it.
+    var onChange: ((Bool) -> Void)?
+
+    init(isOn: Bool) {
+        self.isOn = isOn
+    }
+}
+
+private struct SwitchView: View {
+    @ObservedObject var state: SwitchState
+    let label: String
+
+    var body: some View {
+        Toggle(label, isOn: Binding(
+            get: { state.isOn },
+            set: { newValue in
+                state.isOn = newValue // the knob moves at once, before the logo has faded
+                state.onChange?(newValue)
+            }
+        ))
+        .labelsHidden()
+        .toggleStyle(.switch)
+        .controlSize(.small)
+        // Not `.disabled`: SwiftUI would draw it faint over the row the panel has already greyed,
+        // and a switch that only looks disabled is what the panel wants here.
+        .allowsHitTesting(state.isEnabled)
+        .accessibilityLabel(label)
+    }
+}
+
+/// A switch as System Settings has one: the system's own toggle, at the small control size. (AppKit's
+/// `NSSwitch` is 54 wide with a round knob; a settings row's is 36 with a rounded one.)
+@MainActor
+private final class SwitchToggle: NSView {
+    let state: SwitchState
+    private let host: NSHostingView<SwitchView>
+
+    init(isOn: Bool, label: String) {
+        state = SwitchState(isOn: isOn)
+        host = NSHostingView(rootView: SwitchView(state: state, label: label))
+        super.init(frame: .zero)
+        host.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(host)
+        for orientation in [NSLayoutConstraint.Orientation.horizontal, .vertical] {
+            setContentHuggingPriority(.required, for: orientation)
+            setContentCompressionResistancePriority(.required, for: orientation)
+        }
+        // A little room around the toggle, so its focus ring isn't clipped.
+        NSLayoutConstraint.activate([
+            widthAnchor.constraint(equalToConstant: 38),
+            heightAnchor.constraint(equalToConstant: 22),
+            host.centerXAnchor.constraint(equalTo: centerXAnchor),
+            host.centerYAnchor.constraint(equalTo: centerYAnchor),
+        ])
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    var isOn: Bool { state.isOn }
+    var onChange: ((Bool) -> Void)? {
+        get { state.onChange }
+        set { state.onChange = newValue }
+    }
+    var isEnabled: Bool {
+        get { state.isEnabled }
+        set { state.isEnabled = newValue }
+    }
+
+    /// Sets the switch without telling the panel, animating the knob when asked.
+    func set(on: Bool, animated: Bool) {
+        guard state.isOn != on else { return }
+        if animated {
+            withAnimation(.easeInOut(duration: 0.2)) { state.isOn = on }
+        } else {
+            state.isOn = on
+        }
     }
 }
 
