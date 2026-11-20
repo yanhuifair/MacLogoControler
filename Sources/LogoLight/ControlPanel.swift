@@ -1,11 +1,15 @@
 import AppKit
 import LogoLightCore
+import Observation
 import SwiftUI
 
-/// The panel at the top of the menu, in the style of System Settings on macOS 27: groups of rows on glass,
-/// a switch for the logo first, where it's easiest to reach, then a live view of it, a brightness slider
-/// with the Battery and Charging switches under it, then a switch for each effect. Everything below the
-/// live view is greyed out while the logo is off, and the slider is while the battery sets the brightness.
+/// The panel at the top of the menu, in SwiftUI, laid out and styled as System Settings is on macOS 27:
+/// groups of rows on glass, a switch for the logo first, where it's easiest to reach, then a live view of
+/// it, a brightness slider with the Battery and Charging switches under it, then a switch for each effect.
+/// Everything below the live view is greyed out while the logo is off, and the slider is while the battery
+/// sets the brightness.
+///
+/// It's an `NSHostingView` in the menu item's view: the menu is AppKit's, the panel inside it SwiftUI's.
 @MainActor
 final class ControlPanel: NSView {
     var onLogoSwitched: ((Bool) -> Void)?
@@ -22,91 +26,47 @@ final class ControlPanel: NSView {
     /// The message edited (to remember it for next time).
     var onMorseTextChanged: ((String) -> Void)?
 
-    /// As narrow as the menu's own items allow (they need 153 with Disable Password, and the menu is as
-    /// wide as its widest item). The longest label, "Heartbeat" (61 pt at 13 pt, 64 with Bold Text),
-    /// still fits between its tile and its switch, which leave it 72.
-    private static let width: CGFloat = 172
-    /// Around the panel's contents (9 at the top), and between its sections.
-    private static let inset: CGFloat = 6
-    private static let topInset: CGFloat = 9
-    private static let spacing: CGFloat = 6
-    /// The width of the cards and of everything else in the panel.
-    private static let cardWidth = width - 2 * inset
-    /// How far text outside the cards is indented, on both sides.
-    private static let textIndent: CGFloat = 12
-    /// A row: as tall as a row in System Settings' lists, a little tighter for a menu.
-    private static let rowHeight: CGFloat = 36
-    /// Where row text starts inside a card.
-    fileprivate static let textColumn: CGFloat = 40
-    /// Where the icon tiles start inside a card, and their size.
-    private static let tileInset: CGFloat = 8
-    fileprivate static let tileSize: CGFloat = 24
-    /// How far a switch sits from the card's edge (the same as the tiles), and the least room between
-    /// it and its label. A hairline between rows stops this far short of the trailing edge too.
-    fileprivate static let switchInset: CGFloat = 8
-    private static let labelSpacing: CGFloat = 4
-    /// The corners of the cards: rounder than before, as macOS 26 and later draw them.
-    fileprivate static let cardRadius: CGFloat = 13
-    /// Between one group and the next group's header, and between a header and its card.
-    private static let headerSpacing: CGFloat = 8
-    private static let headerToCardSpacing: CGFloat = 4
-    /// How the brightness and the effects look while the logo is off.
-    private static let greyedOutAlpha: CGFloat = 0.4
-    /// How long they take to grey out or come back when the logo is switched.
-    private static let greyingDuration = 0.22
+    /// As wide as it has to be for the menu's own items (they need 153 with Disable Password) and no
+    /// wider: the longest label, "Heartbeat" (61 pt at 13 pt, 64 with Bold Text), fits between its tile and
+    /// its switch, which leave it 72.
+    static let width = PanelMetrics.width
 
-    private let stack = NSStackView()
+    private let model: PanelModel
     private let preview: LogoPreview
-    private lazy var previewWell = PreviewWell(content: preview)
-    private let logoTile = IconTile(symbol: "lightbulb.fill", color: .systemOrange)
-    private let logoLabel = NSTextField(labelWithString: "LogoLight")
-    private let logoSwitch = SwitchToggle(isOn: false, label: "Apple logo backlight")
-    private let brightnessCard = Card()
-    private let brightnessRow = NSView()
-    private let dimIcon = NSImageView()
-    private let brightIcon = NSImageView()
-    private let brightnessSlider = TrackingSlider(value: 1, minValue: 0, maxValue: 1, target: nil, action: nil)
-    /// Under the slider, in its card: the battery indicator, which has the brightness follow the charge.
-    private let batteryTile = IconTile(symbol: "battery.75percent", color: .systemGreen)
-    private let batteryLabel = NSTextField(labelWithString: "Battery")
-    private let batterySwitch = SwitchToggle(isOn: false, label: "Brightness follows battery")
-    private var batteryRow = NSView()
-    /// Under it: the charging light, which has the logo breathe while the battery charges.
-    private let chargingTile = IconTile(symbol: "bolt.fill", color: .systemYellow)
-    private let chargingLabel = NSTextField(labelWithString: "Charging")
-    private let chargingSwitch = SwitchToggle(isOn: false, label: "Breathe while charging")
-    private var chargingRow = NSView()
-    private let messageLabel = NSTextField(wrappingLabelWithString: "")
-    private let effectsHeader = NSTextField(labelWithString: "Effects")
-    /// Each line of text outside the cards is in one of these, which indents it (and is what's hidden).
-    private let messageContainer = NSStackView()
-    private let effectsHeaderContainer = NSStackView()
-    private let effectsCard = Card()
-    private var effectRows: [(effect: LogoEffect, tile: IconTile, label: NSTextField, toggle: SwitchToggle)] = []
-    /// The Sound effect's row and the hairline above it, hidden where the sound can't be heard.
-    private var soundRows: [NSView] = []
-    private let morseHeader = NSTextField(labelWithString: "Morse Code")
-    private let morseHeaderContainer = NSStackView()
-    private let morseCard = Card()
-    private let morseRow = NSView()
-    private let morseField = NSTextField()
-    /// Play, which turns to stop while a message is sent, and the loop switch beside it.
-    private let playButton = ControlPanel.symbolButton("play.fill")
-    private let loopButton = ControlPanel.symbolButton("repeat")
-
-    /// What the panel shows now. `nil` until the first update, which always applies.
-    private var state: PanelState?
+    private let host: NSHostingView<PanelContent>
 
     /// `finish` is the colour of this Mac's case, which the live view copies.
     init(finish: MacFinish = .spaceBlack) {
-        preview = LogoPreview(finish: finish)
-        super.init(frame: NSRect(x: 0, y: 0, width: Self.width, height: 100))
-        build()
+        let preview = LogoPreview(finish: finish)
+        let model = PanelModel()
+        self.preview = preview
+        self.model = model
+        host = NSHostingView(rootView: PanelContent(model: model, preview: preview))
+        super.init(frame: NSRect(x: 0, y: 0, width: Self.width, height: 200))
+        host.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(host)
+        NSLayoutConstraint.activate([
+            host.topAnchor.constraint(equalTo: topAnchor),
+            host.leadingAnchor.constraint(equalTo: leadingAnchor),
+            host.trailingAnchor.constraint(equalTo: trailingAnchor),
+            host.bottomAnchor.constraint(equalTo: bottomAnchor),
+        ])
+        // The panel's callbacks are handed to it after it's built, so they're read when a control fires.
+        model.onLogoSwitched = { [weak self] in self?.onLogoSwitched?($0) }
+        model.onBrightnessChanged = { [weak self] in self?.onBrightnessChanged?($0) }
+        model.onFollowsBatteryChanged = { [weak self] in self?.onFollowsBatteryChanged?($0) }
+        model.onBreathesWhileChargingChanged = { [weak self] in self?.onBreathesWhileChargingChanged?($0) }
+        model.onEffectChosen = { [weak self] in self?.onEffectChosen?($0) }
+        model.onMorsePlay = { [weak self] in self?.onMorsePlay?($0) }
+        model.onMorseStop = { [weak self] in self?.onMorseStop?() }
+        model.onMorseLoopsChanged = { [weak self] in self?.onMorseLoopsChanged?($0) }
+        model.onMorseTextChanged = { [weak self] in self?.onMorseTextChanged?($0) }
     }
 
     @available(*, unavailable)
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
+    /// Top-down, as the menu's own items beside it are drawn, and as the picture of it is.
     override var isFlipped: Bool { true }
 
     /// Shows how brightly the logo is glowing right now, from 0 to 1.
@@ -115,308 +75,366 @@ final class ControlPanel: NSView {
     }
 
     func update(_ state: PanelState) {
-        guard state != self.state else { return }
-        let old = self.state
-        self.state = state
-        previewWell.isHidden = !state.isSupported
-        let animated = window?.isVisible == true
-
-        // The switch shows what was asked for, even while the logo is still fading. It only looks
-        // disabled while a password is needed.
-        set(logoSwitch, on: state.isOn, animated: animated)
-        logoSwitch.isEnabled = state.canSwitch
-        logoLabel.textColor = state.isSupported ? .labelColor : .tertiaryLabelColor
-        logoTile.isDimmed = !state.isSupported
-
-        brightnessCard.isHidden = !state.showsAdjustments
-        effectsHeaderContainer.isHidden = !state.showsAdjustments
-        effectsCard.isHidden = !state.showsAdjustments
-        morseHeaderContainer.isHidden = !state.showsAdjustments
-        morseCard.isHidden = !state.showsAdjustments
-
-        if !brightnessSlider.isTracking { brightnessSlider.doubleValue = state.brightness }
-        brightnessSlider.isEnabled = state.canChangeBrightness
-        set(batterySwitch, on: state.followsBattery, animated: animated)
-        batterySwitch.isEnabled = state.canAdjust
-        set(chargingSwitch, on: state.breathesWhileCharging, animated: animated)
-        chargingSwitch.isEnabled = state.canAdjust
-        for row in effectRows {
-            set(row.toggle, on: row.effect == state.effect, animated: animated)
-            row.toggle.isEnabled = state.canAdjust
-        }
-        for view in soundRows { view.isHidden = !state.showsSound }
-        morseField.isEnabled = state.canAdjust
-        playButton.state = state.isSendingMorse ? .on : .off
-        playButton.image = Self.symbol(state.isSendingMorse ? "stop.fill" : "play.fill", size: 11)
-        playButton.toolTip = state.isSendingMorse ? "Stop" : "Play"
-        loopButton.state = state.morseLoops ? .on : .off
-        updateMorseButtons()
-        greyOut([brightnessRow: !state.canChangeBrightness, batteryRow: !state.canAdjust,
-                 chargingRow: !state.canAdjust, effectsCard.rows: !state.canAdjust,
-                 morseCard.rows: !state.canAdjust], animated: animated)
-
-        messageLabel.stringValue = state.message ?? ""
-        messageContainer.isHidden = state.message == nil
-        // Only these change the panel's height.
-        if old?.isSupported != state.isSupported || old?.showsAdjustments != state.showsAdjustments
-            || old?.showsSound != state.showsSound || old?.message != state.message {
-            resizeToFit()
-        }
-    }
-
-    /// Greys out the brightness, the Battery and Charging switches, the effects and Morse code, or brings them back, as one fade
-    /// of their rows (the controls in them don't change their own look).
-    private func greyOut(_ rows: [NSView: Bool], animated: Bool) {
-        let changes = rows.map { (view: $0.key, alpha: $0.value ? Self.greyedOutAlpha : 1) }
-            .filter { $0.view.alphaValue != $0.alpha }
-        guard !changes.isEmpty else { return }
-        guard animated else {
-            for change in changes { change.view.alphaValue = change.alpha }
-            return
-        }
-        NSAnimationContext.runAnimationGroup { context in
-            context.duration = Self.greyingDuration
-            context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-            for change in changes { change.view.animator().alphaValue = change.alpha }
-        }
-    }
-
-    /// Sets a switch to `on`, animating its knob when the panel is on screen.
-    private func set(_ toggle: SwitchToggle, on: Bool, animated: Bool) {
-        guard toggle.isOn != on else { return }
-        toggle.set(on: on, animated: animated)
-    }
-
-    // MARK: - Layout
-
-    private func build() {
-        stack.orientation = .vertical
-        stack.alignment = .leading
-        stack.spacing = Self.spacing
-        stack.edgeInsets = NSEdgeInsets(top: Self.topInset, left: Self.inset, bottom: Self.inset, right: Self.inset)
-        stack.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(stack)
-        NSLayoutConstraint.activate([
-            stack.topAnchor.constraint(equalTo: topAnchor),
-            stack.leadingAnchor.constraint(equalTo: leadingAnchor),
-            stack.widthAnchor.constraint(equalToConstant: Self.width),
-        ])
-
-        // The logo: on/off at the top, where the user wanted it (easier to reach than below the live
-        // view), then the live view, then the brightness.
-        logoSwitch.onChange = { [weak self] in self?.onLogoSwitched?($0) }
-        let logoCard = Card()
-        logoCard.add([row(tile: logoTile, label: logoLabel, toggle: logoSwitch)])
-        addFullWidth(logoCard)
-
-        addFullWidth(previewWell)
-
-        dimIcon.image = Self.symbol("sun.min.fill", size: 11)
-        brightIcon.image = Self.symbol("sun.max.fill", size: 15)
-        for icon in [dimIcon, brightIcon] { icon.contentTintColor = .secondaryLabelColor }
-        brightnessSlider.isContinuous = true
-        brightnessSlider.target = self
-        brightnessSlider.action = #selector(brightnessChanged)
-        brightnessSlider.setAccessibilityLabel("Brightness")
-        layOutBrightnessRow()
-        batterySwitch.onChange = { [weak self] in self?.onFollowsBatteryChanged?($0) }
-        batteryRow = row(tile: batteryTile, label: batteryLabel, toggle: batterySwitch)
-        batteryRow.toolTip = "The logo shows the battery's charge: normal brightness when it's full, dimmer as it runs down."
-        chargingSwitch.onChange = { [weak self] in self?.onBreathesWhileChargingChanged?($0) }
-        chargingRow = row(tile: chargingTile, label: chargingLabel, toggle: chargingSwitch)
-        chargingRow.toolTip = "While the battery charges, the logo breathes like the old MacBook sleep light, then goes back to your effect."
-        brightnessCard.add([brightnessRow, Separator(), batteryRow, Separator(), chargingRow])
-        addFullWidth(brightnessCard)
-
-        // Only on a Mac without the logo, where nothing else is shown.
-        messageLabel.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
-        messageLabel.textColor = .secondaryLabelColor
-        messageLabel.maximumNumberOfLines = 0 // as many as it needs: the panel resizes to fit
-        messageLabel.preferredMaxLayoutWidth = Self.cardWidth - 2 * Self.textIndent
-        addIndented(messageLabel, in: messageContainer)
-
-        // Effects: one switch each; at most one is on. Sound (the logo follows the sound the Mac
-        // plays) is last, and only where the sound can be heard.
-        effectsHeader.font = .systemFont(ofSize: 13, weight: .semibold)
-        effectsHeader.textColor = .labelColor
-        addIndented(effectsHeader, in: effectsHeaderContainer, topSpacing: Self.headerSpacing)
-        stack.setCustomSpacing(Self.headerToCardSpacing, after: effectsHeaderContainer)
-
-        var rows: [NSView] = []
-        for effect in LogoEffect.allCases where effect != .none {
-            let tile = IconTile(symbol: Self.symbolName(for: effect), color: Self.color(for: effect))
-            let label = NSTextField(labelWithString: effect.title)
-            let toggle = SwitchToggle(isOn: false, label: effect.title)
-            toggle.onChange = { [weak self] isOn in self?.choose(effect, isOn: isOn) }
-            effectRows.append((effect, tile, label, toggle))
-            if !rows.isEmpty { rows.append(Separator()) }
-            let row = row(tile: tile, label: label, toggle: toggle)
-            rows.append(row)
-            if effect == .sound {
-                row.toolTip = "The logo glows with the sound your Mac is playing: brighter as it gets louder, "
-                    + "peaking at your brightness. macOS asks once to let LogoLight hear it."
-                soundRows = [rows[rows.count - 2], row]
-            }
-        }
-        effectsCard.add(rows)
-        addFullWidth(effectsCard)
-
-        // Morse code: type a message and press play, which turns to stop while it's sent. The loop
-        // switch, as in a music player, makes it repeat until it's stopped.
-        morseHeader.font = effectsHeader.font
-        morseHeader.textColor = .secondaryLabelColor
-        addIndented(morseHeader, in: morseHeaderContainer, topSpacing: Self.headerSpacing)
-        stack.setCustomSpacing(Self.headerToCardSpacing, after: morseHeaderContainer)
-        layOutMorseRow()
-        morseCard.add([morseRow])
-        addFullWidth(morseCard)
-    }
-
-    /// The message field, then play and loop, in one row as narrow as the effects'.
-    private func layOutMorseRow() {
-        morseField.placeholderString = "Message"
-        morseField.font = .systemFont(ofSize: 12)
-        morseField.bezelStyle = .roundedBezel
-        morseField.lineBreakMode = .byTruncatingTail
-        morseField.usesSingleLineMode = true
-        morseField.cell?.isScrollable = true
-        morseField.cell?.wraps = false
-        morseField.delegate = self
-        morseField.target = self
-        morseField.action = #selector(morseFieldReturned) // Return plays it
-        morseField.setAccessibilityLabel("Morse code message")
-
-        playButton.toolTip = "Play"
-        playButton.setAccessibilityLabel("Play Morse code")
-        playButton.target = self
-        playButton.action = #selector(playPressed)
-        loopButton.toolTip = "Repeat until stopped"
-        loopButton.setAccessibilityLabel("Repeat Morse code")
-        loopButton.target = self
-        loopButton.action = #selector(loopPressed)
-        for view in [morseField, playButton, loopButton] as [NSView] {
-            view.translatesAutoresizingMaskIntoConstraints = false
-            morseRow.addSubview(view)
-        }
-        NSLayoutConstraint.activate([
-            morseRow.heightAnchor.constraint(equalToConstant: Self.rowHeight),
-            morseField.leadingAnchor.constraint(equalTo: morseRow.leadingAnchor, constant: Self.tileInset),
-            morseField.centerYAnchor.constraint(equalTo: morseRow.centerYAnchor),
-            morseField.trailingAnchor.constraint(equalTo: playButton.leadingAnchor, constant: -Self.labelSpacing),
-            playButton.centerYAnchor.constraint(equalTo: morseRow.centerYAnchor),
-            playButton.trailingAnchor.constraint(equalTo: loopButton.leadingAnchor, constant: -Self.labelSpacing),
-            loopButton.centerYAnchor.constraint(equalTo: morseRow.centerYAnchor),
-            loopButton.trailingAnchor.constraint(equalTo: morseRow.trailingAnchor, constant: -Self.switchInset),
-        ])
-        updateMorseButtons()
+        guard state != model.state else { return }
+        model.apply(state)
+        // SwiftUI lays the new rows out on its next turn, and the menu item is as tall as the panel, so
+        // it's sized once they're in.
+        DispatchQueue.main.async { [weak self] in self?.sizeToFitContent() }
     }
 
     /// Puts back the message typed last time.
     func setMorseText(_ text: String) {
-        morseField.stringValue = String(text.prefix(MorseCode.maxLength))
-        updateMorseButtons()
+        model.setMorseText(text)
     }
 
-    /// Play can start a message when there's something to send, and always stop one; the loop
-    /// switch can always be flipped.
-    private func updateMorseButtons() {
-        let canAdjust = state?.canAdjust ?? false
-        playButton.isEnabled = canAdjust && (MorseCode.canSend(morseField.stringValue) || playButton.state == .on)
-        loopButton.isEnabled = canAdjust
-        let notation = MorseCode.notation(morseField.stringValue)
-        morseField.toolTip = notation.isEmpty ? "Letters, digits and punctuation" : notation
+    /// Lays the panel out for the state it was given, for drawing it into a picture: SwiftUI applies a
+    /// change on the next turn of the run loop, so this waits for it, then sizes the panel to what it drew.
+    func settle() {
+        RunLoop.current.run(until: Date().addingTimeInterval(0.06))
+        sizeToFitContent()
     }
 
-    private func row(tile: IconTile, label: NSTextField, toggle: SwitchToggle) -> NSView {
-        label.font = .systemFont(ofSize: 13)
-        label.lineBreakMode = .byTruncatingTail
-
-        let row = NSView()
-        for view in [tile, label, toggle] {
-            view.translatesAutoresizingMaskIntoConstraints = false
-            row.addSubview(view)
-        }
-        NSLayoutConstraint.activate([
-            row.heightAnchor.constraint(equalToConstant: Self.rowHeight),
-            tile.leadingAnchor.constraint(equalTo: row.leadingAnchor, constant: Self.tileInset),
-            tile.centerYAnchor.constraint(equalTo: row.centerYAnchor),
-            label.leadingAnchor.constraint(equalTo: row.leadingAnchor, constant: Self.textColumn),
-            label.centerYAnchor.constraint(equalTo: row.centerYAnchor),
-            label.trailingAnchor.constraint(lessThanOrEqualTo: toggle.leadingAnchor, constant: -Self.labelSpacing),
-            toggle.trailingAnchor.constraint(equalTo: row.trailingAnchor, constant: -Self.switchInset),
-            toggle.centerYAnchor.constraint(equalTo: row.centerYAnchor),
-        ])
-        return row
-    }
-
-    private func layOutBrightnessRow() {
-        for view in [dimIcon, brightnessSlider, brightIcon] {
-            view.translatesAutoresizingMaskIntoConstraints = false
-            brightnessRow.addSubview(view)
-        }
-        NSLayoutConstraint.activate([
-            brightnessRow.heightAnchor.constraint(equalToConstant: Self.rowHeight),
-            // The small sun sits under the icon tiles, and the track starts at the text column.
-            dimIcon.centerXAnchor.constraint(equalTo: brightnessRow.leadingAnchor, constant: Self.tileInset + Self.tileSize / 2),
-            dimIcon.centerYAnchor.constraint(equalTo: brightnessRow.centerYAnchor),
-            // AppKit's slider draws its track 8 in from its edge, so it lines up with the text.
-            brightnessSlider.leadingAnchor.constraint(equalTo: brightnessRow.leadingAnchor,
-                                                      constant: Self.textColumn - 8),
-            brightnessSlider.centerYAnchor.constraint(equalTo: brightnessRow.centerYAnchor),
-            brightnessSlider.trailingAnchor.constraint(equalTo: brightIcon.leadingAnchor, constant: -4),
-            brightIcon.trailingAnchor.constraint(equalTo: brightnessRow.trailingAnchor, constant: -12),
-            brightIcon.centerYAnchor.constraint(equalTo: brightnessRow.centerYAnchor),
-        ])
-    }
-
-    private func addFullWidth(_ view: NSView) {
-        stack.addArrangedSubview(view)
-        view.widthAnchor.constraint(equalToConstant: Self.cardWidth).isActive = true
-    }
-
-    /// Adds text outside the cards, indented as in System Settings, with `topSpacing` above it.
-    private func addIndented(_ text: NSView, in container: NSStackView, topSpacing: CGFloat = 0) {
-        container.addArrangedSubview(text)
-        container.edgeInsets = NSEdgeInsets(top: topSpacing, left: Self.textIndent, bottom: 0, right: Self.textIndent)
-        addFullWidth(container)
-    }
-
-    private func resizeToFit() {
-        layoutSubtreeIfNeeded()
-        let height = stack.fittingSize.height
+    private func sizeToFitContent() {
+        host.layoutSubtreeIfNeeded()
+        let height = max(host.fittingSize.height, 1)
         if abs(frame.height - height) > 0.5 { setFrameSize(NSSize(width: Self.width, height: height)) }
     }
 
-    // MARK: - Actions
+    /// The one-line labels in the panel's rows, for the renderer's check that they fit: SwiftUI truncates
+    /// one that's too wide without saying so.
+    var rowLabels: [String] {
+        let state = model.state
+        guard state.showsAdjustments else { return ["LogoLight"] }
+        return ["LogoLight", "Battery", "Charging"]
+            + LogoEffect.allCases.filter { $0 != .none && ($0 != .sound || state.showsSound) }.map(\.title)
+    }
+}
 
-    @objc private func brightnessChanged() {
-        onBrightnessChanged?(brightnessSlider.doubleValue)
+/// The numbers the panel is laid out with, the same as System Settings' where they can be.
+private enum PanelMetrics {
+    static let width: CGFloat = 172
+    /// Around the panel's contents (9 at the top, 6 at the bottom), and between its groups.
+    static let inset: CGFloat = 6
+    static let topInset: CGFloat = 9
+    static let spacing: CGFloat = 6
+    /// The width of the cards and of everything else in the panel.
+    static let cardWidth = width - 2 * inset
+    /// How far text outside the cards is indented, on both sides.
+    static let textIndent: CGFloat = 12
+    /// A row: as tall as a row in System Settings' lists, a little tighter for a menu.
+    static let rowHeight: CGFloat = 36
+    /// Where row text starts inside a card, and where the icon tiles start, and their size.
+    static let textColumn: CGFloat = 40
+    static let tileInset: CGFloat = 8
+    static let tileSize: CGFloat = 24
+    /// How far a control sits from the card's edge (the same as the tiles), and the least room between it
+    /// and its label. A hairline between rows stops this far short of the trailing edge too.
+    static let controlInset: CGFloat = 8
+    static let labelSpacing: CGFloat = 4
+    /// The corners of the cards: rounder than before, as macOS 26 and later draw them.
+    static let cardRadius: CGFloat = 13
+    /// Between one group and the next group's header, and between a header and its card.
+    static let headerSpacing: CGFloat = 8
+    static let headerToCard: CGFloat = 4
+    /// How the brightness and the effects look while the logo is off, and how long they take to get there.
+    static let greyedAlpha: Double = 0.4
+    static let greying: Double = 0.22
+}
+
+/// What the panel shows, and what to tell the app when a control in it is used. The switches, the slider and
+/// the loop button keep what the user just did until the app's state comes back, so they move under the
+/// pointer rather than after the logo has faded.
+@MainActor
+@Observable
+private final class PanelModel {
+    /// Everything the panel decides from: what can be used, how the logo is doing, the message it shows.
+    private(set) var state: PanelState
+    var isOn: Bool
+    var followsBattery: Bool
+    var breathesWhileCharging: Bool
+    var effect: LogoEffect
+    var loops: Bool
+    /// The brightness the slider shows; not the app's while it's being dragged.
+    var brightness: Double
+    /// The message typed, which is the panel's while it's being edited.
+    var morseText = "SOS"
+
+    var onLogoSwitched: ((Bool) -> Void)?
+    var onBrightnessChanged: ((Double) -> Void)?
+    var onFollowsBatteryChanged: ((Bool) -> Void)?
+    var onBreathesWhileChargingChanged: ((Bool) -> Void)?
+    var onEffectChosen: ((LogoEffect) -> Void)?
+    var onMorsePlay: ((String) -> Void)?
+    var onMorseStop: (() -> Void)?
+    var onMorseLoopsChanged: ((Bool) -> Void)?
+    var onMorseTextChanged: ((String) -> Void)?
+
+    private var isDraggingBrightness = false
+
+    init() {
+        // Nothing is known until the first update, which always applies: an empty panel is drawn once.
+        let status = LogoStatus(isSupported: false, setting: nil, source: .daemon, isLit: false, outputLevel: 0)
+        let state = PanelState(status: status, canControlDirectly: false, effect: .none, brightness: 1)
+        self.state = state
+        isOn = state.isOn
+        followsBattery = state.followsBattery
+        breathesWhileCharging = state.breathesWhileCharging
+        effect = state.effect
+        loops = state.morseLoops
+        brightness = state.brightness
     }
 
-    @objc private func playPressed() {
-        if playButton.state == .on {
-            onMorseStop?()
-        } else {
-            onMorsePlay?(morseField.stringValue)
-        }
+    func apply(_ state: PanelState) {
+        self.state = state
+        isOn = state.isOn
+        followsBattery = state.followsBattery
+        breathesWhileCharging = state.breathesWhileCharging
+        effect = state.effect
+        loops = state.morseLoops
+        if !isDraggingBrightness { brightness = state.brightness }
     }
 
-    @objc private func loopPressed() {
-        onMorseLoopsChanged?(loopButton.state == .on)
+    // MARK: - What the controls do
+
+    var isSendingMorse: Bool { state.isSendingMorse }
+
+    /// Play can start a message when there's something to send, and always stop one.
+    var canPlay: Bool {
+        state.canAdjust && (MorseCode.canSend(morseText) || isSendingMorse)
     }
 
-    /// Return plays the message, unless one is being sent (stopping it takes the button).
-    @objc private func morseFieldReturned() {
-        guard playButton.isEnabled, playButton.state != .on else { return }
-        onMorsePlay?(morseField.stringValue)
+    func flipLogo(_ on: Bool) {
+        isOn = on
+        onLogoSwitched?(on)
     }
 
-    private func choose(_ effect: LogoEffect, isOn: Bool) {
-        for other in effectRows where other.effect != effect { set(other.toggle, on: false, animated: true) }
+    func setBrightness(_ value: Double) {
+        brightness = min(max(value, 0), 1)
+        onBrightnessChanged?(brightness)
+    }
+
+    func dragBrightness(_ editing: Bool) {
+        isDraggingBrightness = editing
+    }
+
+    func flipBattery(_ on: Bool) {
+        followsBattery = on
+        onFollowsBatteryChanged?(on)
+    }
+
+    func flipCharging(_ on: Bool) {
+        breathesWhileCharging = on
+        onBreathesWhileChargingChanged?(on)
+    }
+
+    /// At most one effect is on, so turning one on turns the others off straight away.
+    func choose(_ effect: LogoEffect, isOn: Bool) {
+        self.effect = isOn ? effect : .none
         onEffectChosen?(isOn ? effect : .none)
     }
 
-    // MARK: - Styling
+    func setLoops(_ loops: Bool) {
+        self.loops = loops
+        onMorseLoopsChanged?(loops)
+    }
+
+    func play() {
+        guard canPlay else { return }
+        if isSendingMorse {
+            onMorseStop?()
+        } else {
+            onMorsePlay?(morseText)
+        }
+    }
+
+    /// Puts back the message typed last time, without telling the app it changed.
+    func setMorseText(_ text: String) {
+        morseText = String(text.prefix(MorseCode.maxLength))
+    }
+
+    func editMorse(_ text: String) {
+        setMorseText(text)
+        onMorseTextChanged?(morseText)
+    }
+
+    /// What the field's tooltip says: the dots and dashes the message will be sent as.
+    var morseNotation: String {
+        let notation = MorseCode.notation(morseText)
+        return notation.isEmpty ? "Letters, digits and punctuation" : notation
+    }
+}
+
+/// The panel itself: the same groups of rows, in the order the menu shows them.
+private struct PanelContent: View {
+    let model: PanelModel
+    let preview: LogoPreview
+
+    private var state: PanelState { model.state }
+    private var greyed: Double { PanelMetrics.greyedAlpha }
+    private var greying: Animation { .easeInOut(duration: PanelMetrics.greying) }
+
+    var body: some View {
+        VStack(spacing: PanelMetrics.spacing) {
+            PanelCard {
+                PanelRow(title: "LogoLight", tile: .init(symbol: "lightbulb.fill", color: .systemOrange),
+                         isDimmed: !state.isSupported) {
+                    Toggle("Apple logo backlight", isOn: Binding(get: { model.isOn }, set: { model.flipLogo($0) }))
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                        .controlSize(.small)
+                        .allowsHitTesting(state.canSwitch)
+                }
+            }
+
+            if state.isSupported {
+                PanelCard {
+                    LogoPreviewView(preview: preview)
+                        .frame(height: LogoPreview.lidSize.height)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 9)
+                }
+            }
+
+            if state.showsAdjustments {
+                brightnessCard
+                VStack(spacing: PanelMetrics.headerToCard) {
+                    GroupHeader("Effects")
+                    effectsCard
+                }
+                .padding(.top, PanelMetrics.headerSpacing)
+                VStack(spacing: PanelMetrics.headerToCard) {
+                    GroupHeader("Morse Code")
+                    morseCard
+                }
+                .padding(.top, PanelMetrics.headerSpacing)
+            }
+
+            if let message = state.message {
+                Text(message)
+                    .font(.system(size: NSFont.smallSystemFontSize))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, PanelMetrics.textIndent)
+            }
+        }
+        .padding(.top, PanelMetrics.topInset)
+        .padding(.bottom, PanelMetrics.inset)
+        .padding(.horizontal, PanelMetrics.inset)
+        .frame(width: PanelMetrics.width, alignment: .top)
+    }
+
+    // MARK: - The brightness, the battery and the charging light
+
+    private var brightnessCard: some View {
+        PanelCard {
+            HStack(spacing: PanelMetrics.labelSpacing) {
+                Image(systemName: "sun.min.fill")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                    .frame(width: PanelMetrics.tileSize)
+                    .opacity(state.canChangeBrightness ? 1 : greyed)
+                Slider(value: Binding(get: { model.brightness }, set: { model.setBrightness($0) }),
+                       in: 0...1, onEditingChanged: { model.dragBrightness($0) })
+                    .labelsHidden()
+                    .accessibilityLabel("Brightness")
+                    .disabled(!state.canChangeBrightness)
+                Image(systemName: "sun.max.fill")
+                    .font(.system(size: 15))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 16)
+                    .opacity(state.canChangeBrightness ? 1 : greyed)
+            }
+            .padding(.leading, PanelMetrics.tileInset)
+            .padding(.trailing, PanelMetrics.inset + 4)
+            .frame(height: PanelMetrics.rowHeight)
+            .animation(greying, value: state.canChangeBrightness)
+
+            RowSeparator()
+
+            PanelRow(title: "Battery", tile: .init(symbol: "battery.75percent", color: .systemGreen),
+                     isGreyed: !state.canAdjust,
+                     help: "The logo shows the battery's charge: normal brightness when it's full, dimmer as it runs down.") {
+                Toggle("Brightness follows battery",
+                       isOn: Binding(get: { model.followsBattery }, set: { model.flipBattery($0) }))
+                    .labelsHidden()
+                    .toggleStyle(.switch)
+                    .controlSize(.small)
+            }
+
+            RowSeparator()
+
+            PanelRow(title: "Charging", tile: .init(symbol: "bolt.fill", color: .systemYellow),
+                     isGreyed: !state.canAdjust,
+                     help: "While the battery charges, the logo breathes like the old MacBook sleep light, then goes back to your effect.") {
+                Toggle("Breathe while charging",
+                       isOn: Binding(get: { model.breathesWhileCharging }, set: { model.flipCharging($0) }))
+                    .labelsHidden()
+                    .toggleStyle(.switch)
+                    .controlSize(.small)
+            }
+        }
+    }
+
+    // MARK: - The effects
+
+    private var effectsCard: some View {
+        let effects = LogoEffect.allCases.filter { $0 != .none && ($0 != .sound || state.showsSound) }
+        return PanelCard {
+            ForEach(Array(effects.enumerated()), id: \.element) { index, effect in
+                if index > 0 { RowSeparator() }
+                PanelRow(title: effect.title, tile: .init(symbol: Self.symbolName(for: effect),
+                                                         color: Self.color(for: effect)),
+                         isGreyed: !state.canAdjust,
+                         help: effect == .sound ? "The logo glows with the sound your Mac is playing: brighter as "
+                             + "it gets louder, peaking at your brightness. macOS asks once to let LogoLight hear it." : nil) {
+                    Toggle(effect.title, isOn: Binding(get: { model.effect == effect },
+                                                       set: { model.choose(effect, isOn: $0) }))
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                        .controlSize(.small)
+                }
+            }
+        }
+    }
+
+    // MARK: - Morse code
+
+    private var morseCard: some View {
+        PanelCard {
+            HStack(spacing: PanelMetrics.labelSpacing + 2) {
+                TextField("Message", text: Binding(get: { model.morseText }, set: { model.editMorse($0) }))
+                    .textFieldStyle(.roundedBorder)
+                    .font(.system(size: 12))
+                    .lineLimit(1)
+                    .onSubmit { model.play() }
+                    .accessibilityLabel("Morse code message")
+                    .help(model.morseNotation)
+
+                Button {
+                    model.play()
+                } label: {
+                    Image(systemName: model.isSendingMorse ? "stop.fill" : "play.fill")
+                }
+                .buttonStyle(.bordered)
+                .disabled(!model.canPlay)
+                .help(model.isSendingMorse ? "Stop" : "Play")
+                .accessibilityLabel("Play Morse code")
+
+                Toggle(isOn: Binding(get: { model.loops }, set: { model.setLoops($0) })) {
+                    Image(systemName: "repeat")
+                }
+                .toggleStyle(.button)
+                .help("Repeat until stopped")
+                .accessibilityLabel("Repeat Morse code")
+            }
+            .padding(.horizontal, PanelMetrics.tileInset)
+            .frame(height: PanelMetrics.rowHeight)
+            .disabled(!state.canAdjust)
+        }
+    }
+
+    // MARK: - The icons
 
     private static func symbolName(for effect: LogoEffect) -> String {
         switch effect {
@@ -432,43 +450,150 @@ final class ControlPanel: NSView {
         switch effect {
         case .none: .systemGray
         case .breathe: .systemTeal
-        case .pulse: .systemIndigo
-        case .heartbeat: .systemPink
+        case .pulse: .systemBlue
+        case .heartbeat: .systemRed
         case .sound: .systemPurple
         }
     }
+}
 
-    /// A native icon button, bordered as a toolbar's are. It's a toggle, so it stays lit while its
-    /// action is under way: Play while a message is sent, Repeat while it loops.
-    private static func symbolButton(_ name: String) -> NSButton {
-        let button = NSButton(image: symbol(name, size: 11) ?? NSImage(), target: nil, action: nil)
-        button.bezelStyle = .texturedRounded
-        button.setButtonType(.toggle)
-        button.imagePosition = .imageOnly
-        return button
-    }
+/// A rounded group of rows on glass, as System Settings has them.
+private struct PanelCard<Content: View>: View {
+    @ViewBuilder var content: Content
 
-    fileprivate static func symbol(_ name: String, size: CGFloat) -> NSImage? {
-        NSImage(systemSymbolName: name, accessibilityDescription: nil)?
-            .withSymbolConfiguration(.init(pointSize: size, weight: .medium))
+    var body: some View {
+        VStack(spacing: 0) { content }
+            .frame(maxWidth: .infinity)
+            .background(GlassMaterial())
     }
 }
 
-extension ControlPanel: NSTextFieldDelegate {
-    func controlTextDidChange(_ notification: Notification) {
-        if morseField.stringValue.count > MorseCode.maxLength {
-            morseField.stringValue = String(morseField.stringValue.prefix(MorseCode.maxLength))
+/// A row: its icon, its label, and its control at the trailing edge.
+private struct PanelRow<Control: View>: View {
+    let title: String
+    let tile: PanelTile
+    var isDimmed = false
+    /// Whether it's out of reach for now (the logo is off): faded, and its control takes no clicks.
+    var isGreyed = false
+    var help: String?
+    @ViewBuilder var control: Control
+
+    var body: some View {
+        // The label takes what the tile and the control leave, which is where the AppKit rows had it.
+        // A greyed-out row fades its icon and label, and disables its control: fading the control too
+        // would leave a switch's knob without its track.
+        HStack(spacing: 0) {
+            tile.opacity(isGreyed ? PanelMetrics.greyedAlpha : (isDimmed ? 0.35 : 1))
+            Text(title)
+                .font(.system(size: 13))
+                .lineLimit(1)
+                .foregroundStyle(isDimmed ? AnyShapeStyle(.tertiary) : AnyShapeStyle(.primary))
+                .opacity(isGreyed ? PanelMetrics.greyedAlpha : 1)
+                .padding(.leading, PanelMetrics.tileInset)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            control
+                .disabled(isGreyed)
+                .padding(.leading, PanelMetrics.labelSpacing)
         }
-        updateMorseButtons()
-        onMorseTextChanged?(morseField.stringValue)
+        .padding(.leading, PanelMetrics.tileInset)
+        .padding(.trailing, PanelMetrics.controlInset)
+        .frame(height: PanelMetrics.rowHeight)
+        .animation(.easeInOut(duration: PanelMetrics.greying), value: isGreyed)
+        .tip(help)
+    }
+}
+
+/// A white symbol on a coloured rounded square, lit from above, as System Settings' icons are.
+private struct PanelTile: View {
+    let symbol: String
+    let color: NSColor
+
+    private var shape: RoundedRectangle { RoundedRectangle(cornerRadius: 6.5, style: .continuous) }
+
+    var body: some View {
+        shape
+            .fill(LinearGradient(colors: [Color(nsColor: color.blended(withFraction: 0.3, of: .white) ?? color),
+                                          Color(nsColor: color)],
+                                 startPoint: .top, endPoint: .bottom))
+            .overlay(shape.strokeBorder(LinearGradient(colors: [.white.opacity(0.28), .white.opacity(0.02)],
+                                                       startPoint: .top, endPoint: .bottom), lineWidth: 1))
+            .overlay(Image(systemName: symbol)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(.white))
+            .frame(width: PanelMetrics.tileSize, height: PanelMetrics.tileSize)
+    }
+}
+
+/// A group's title, outside its card, as System Settings writes them.
+private struct GroupHeader: View {
+    let title: String
+
+    init(_ title: String) { self.title = title }
+
+    var body: some View {
+        Text(title)
+            .font(.system(size: 13, weight: .semibold))
+            .foregroundStyle(.primary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, PanelMetrics.textIndent)
+    }
+}
+
+/// The hairline between rows: from the text column to the trailing inset, as in System Settings.
+private struct RowSeparator: View {
+    var body: some View {
+        Rectangle()
+            .fill(Color(nsColor: .separatorColor))
+            .frame(height: 1)
+            .padding(.leading, PanelMetrics.textColumn)
+            .padding(.trailing, PanelMetrics.controlInset)
+    }
+}
+
+/// The lit, translucent material macOS 26 and later draw their settings' groups on: a soft gradient, and a
+/// hairline rim that's lit at the top and fades toward the bottom, as light falls on an edge.
+private struct GlassMaterial: View {
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: PanelMetrics.cardRadius, style: .continuous)
+        let isDark = colorScheme == .dark
+        let fill = isDark
+            ? [Color.white.opacity(0.155), Color.white.opacity(0.075)]
+            : [Color.white.opacity(0.92), Color.white.opacity(0.7)]
+        let rim = isDark
+            ? [Color.white.opacity(0.26), Color.white.opacity(0.04)]
+            : [Color.black.opacity(0.10), Color.black.opacity(0.02)]
+        shape
+            .fill(LinearGradient(colors: fill, startPoint: .top, endPoint: .bottom))
+            .overlay(shape.strokeBorder(LinearGradient(colors: rim, startPoint: .top, endPoint: .bottom), lineWidth: 1))
+    }
+}
+
+/// Shows the panel's live view, which is AppKit's: it draws the lid with the logo's light on it.
+private struct LogoPreviewView: NSViewRepresentable {
+    let preview: LogoPreview
+
+    func makeNSView(context: Context) -> LogoPreview { preview }
+    func updateNSView(_ view: LogoPreview, context: Context) {}
+}
+
+private extension View {
+    /// A tooltip, where there is one to give.
+    @ViewBuilder func tip(_ text: String?) -> some View {
+        if let text {
+            self.help(text)
+        } else {
+            self
+        }
     }
 }
 
 /// A live view of the logo: the back of the MacBook Pro in its own finish (space black or silver) and
 /// in the lid's real proportions, with the logo glowing on it.
 private final class LogoPreview: NSView {
-    /// The 14-inch MacBook Pro's lid is 31.3 × 22.1 cm.
-    private static let lidSize = NSSize(width: 116, height: 82)
+    /// The 14-inch MacBook Pro's lid is 31.3 × 22.1 cm. The panel's row of the live view is this tall.
+    static let lidSize = NSSize(width: 116, height: 82)
     /// A little larger than on the real lid, so the glow reads at this size.
     private static let logoSize = NSSize(width: 26, height: 26)
 
@@ -559,274 +684,6 @@ private final class LogoPreview: NSView {
         CATransaction.setDisableActions(true)
         changes()
         CATransaction.commit()
-    }
-}
-
-/// A rounded, slightly raised group of rows, like a module in Control Center.
-private final class Card: NSView {
-    /// The rows, without the card's background (e.g. to fade them).
-    let rows = NSStackView()
-
-    init() {
-        super.init(frame: .zero)
-        rows.orientation = .vertical
-        rows.alignment = .width
-        rows.spacing = 0
-        rows.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(rows)
-        NSLayoutConstraint.activate([
-            rows.topAnchor.constraint(equalTo: topAnchor),
-            rows.bottomAnchor.constraint(equalTo: bottomAnchor),
-            rows.leadingAnchor.constraint(equalTo: leadingAnchor),
-            rows.trailingAnchor.constraint(equalTo: trailingAnchor),
-        ])
-    }
-
-    @available(*, unavailable)
-    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
-
-    func add(_ views: [NSView]) {
-        views.forEach(rows.addArrangedSubview)
-    }
-
-    override func draw(_ dirtyRect: NSRect) {
-        GlassMaterial.draw(in: bounds, radius: ControlPanel.cardRadius, appearance: effectiveAppearance)
-    }
-}
-
-/// The live view in a group of its own, as a Control Center module holds its control.
-private final class PreviewWell: NSView {
-    init(content: NSView) {
-        super.init(frame: .zero)
-        content.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(content)
-        NSLayoutConstraint.activate([
-            content.topAnchor.constraint(equalTo: topAnchor, constant: 9),
-            content.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -9),
-            content.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 9),
-            content.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -9),
-        ])
-    }
-
-    @available(*, unavailable)
-    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
-
-    override func draw(_ dirtyRect: NSRect) {
-        GlassMaterial.draw(in: bounds, radius: ControlPanel.cardRadius, appearance: effectiveAppearance, recessed: true)
-    }
-}
-
-/// The glass the panel's groups are drawn on: the lit, translucent material macOS 26 and later use for
-/// Control Center's modules.
-///
-/// Drawn rather than made with `NSGlassEffectView`, for two reasons: a glass view draws as a blank
-/// shape into a picture (the README's are made that way, by `PanelRenderer`), and a menu is glass
-/// itself, which the system asks glass not to sit on.
-private enum GlassMaterial {
-    /// Fills `rect` with glass: a soft gradient, and a hairline rim that's lit at the top and fades
-    /// toward the bottom, as light falls on an edge. `recessed` turns both around for a well that
-    /// looks cut into the panel, e.g. for the live view.
-    static func draw(in rect: NSRect, radius: CGFloat, appearance: NSAppearance, recessed: Bool = false) {
-        guard let context = NSGraphicsContext.current?.cgContext else { return }
-        let isDark = appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
-        let body = CGPath(roundedRect: rect.insetBy(dx: 0.5, dy: 0.5), cornerWidth: radius - 0.5,
-                          cornerHeight: radius - 0.5, transform: nil)
-
-        context.saveGState()
-        context.addPath(body)
-        context.clip()
-        let fill: [CGColor]
-        if recessed {
-            fill = isDark
-                ? [NSColor(white: 0, alpha: 0.22).cgColor, NSColor(white: 0, alpha: 0.12).cgColor]
-                : [NSColor(white: 0, alpha: 0.06).cgColor, NSColor(white: 0, alpha: 0.03).cgColor]
-        } else {
-            fill = isDark
-                ? [NSColor(white: 1, alpha: 0.155).cgColor, NSColor(white: 1, alpha: 0.075).cgColor]
-                : [NSColor(white: 1, alpha: 0.92).cgColor, NSColor(white: 1, alpha: 0.7).cgColor]
-        }
-        draw(fill, in: context, from: CGPoint(x: rect.midX, y: rect.minY), to: CGPoint(x: rect.midX, y: rect.maxY))
-        context.restoreGState()
-
-        context.saveGState()
-        context.addPath(body)
-        context.setLineWidth(1)
-        context.replacePathWithStrokedPath()
-        context.clip()
-        let rim: [CGColor]
-        if recessed {
-            rim = isDark
-                ? [NSColor(white: 0, alpha: 0.45).cgColor, NSColor(white: 1, alpha: 0.06).cgColor]
-                : [NSColor(white: 0, alpha: 0.14).cgColor, NSColor(white: 1, alpha: 0.5).cgColor]
-        } else {
-            rim = isDark
-                ? [NSColor(white: 1, alpha: 0.26).cgColor, NSColor(white: 1, alpha: 0.04).cgColor]
-                : [NSColor(white: 0, alpha: 0.10).cgColor, NSColor(white: 0, alpha: 0.02).cgColor]
-        }
-        draw(rim, in: context, from: CGPoint(x: rect.midX, y: rect.minY), to: CGPoint(x: rect.midX, y: rect.maxY))
-        context.restoreGState()
-    }
-
-    /// A linear gradient straight down `from` the top `to` the bottom.
-    static func draw(_ colors: [CGColor], in context: CGContext, from start: CGPoint, to end: CGPoint) {
-        guard let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: colors as CFArray,
-                                        locations: [0, 1])
-        else { return }
-        context.drawLinearGradient(gradient, start: start, end: end, options: [])
-    }
-}
-
-
-/// A hairline between rows that starts under the row's text, as in iOS Settings.
-private final class Separator: NSView {
-    override var intrinsicContentSize: NSSize { NSSize(width: NSView.noIntrinsicMetric, height: 1) }
-
-    override func draw(_ dirtyRect: NSRect) {
-        NSColor.separatorColor.setFill()
-        let thickness = 1 / (window?.backingScaleFactor ?? 2)
-        let start = ControlPanel.textColumn
-        NSRect(x: start, y: 0, width: max(0, bounds.width - start - ControlPanel.switchInset), height: thickness).fill()
-    }
-}
-
-/// A white symbol on a coloured rounded square, like the icons in System Settings.
-private final class IconTile: NSView {
-    private let color: NSColor
-    var isDimmed = false { didSet { alphaValue = isDimmed ? 0.35 : 1 } }
-
-    init(symbol: String, color: NSColor) {
-        self.color = color
-        super.init(frame: .zero)
-        wantsLayer = true // so it fades with `alphaValue` where the logo is, or isn't, supported
-        let image = NSImageView(image: ControlPanel.symbol(symbol, size: 12) ?? NSImage())
-        image.contentTintColor = .white
-        image.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(image)
-        NSLayoutConstraint.activate([
-            widthAnchor.constraint(equalToConstant: ControlPanel.tileSize),
-            heightAnchor.constraint(equalToConstant: ControlPanel.tileSize),
-            image.centerXAnchor.constraint(equalTo: centerXAnchor),
-            image.centerYAnchor.constraint(equalTo: centerYAnchor),
-        ])
-    }
-
-    @available(*, unavailable)
-    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
-
-    override func draw(_ dirtyRect: NSRect) {
-        let radius: CGFloat = 6.5
-        let tile = NSBezierPath(roundedRect: bounds, xRadius: radius, yRadius: radius)
-        // Lit from above, as the system's own icons are.
-        NSGradient(starting: color.blended(withFraction: 0.3, of: .white) ?? color, ending: color)?
-            .draw(in: tile, angle: -90)
-        guard let context = NSGraphicsContext.current?.cgContext else { return }
-        context.saveGState()
-        context.addPath(CGPath(roundedRect: bounds, cornerWidth: radius, cornerHeight: radius, transform: nil))
-        context.setLineWidth(1)
-        context.replacePathWithStrokedPath()
-        context.clip()
-        GlassMaterial.draw([NSColor(white: 1, alpha: 0.28).cgColor, NSColor(white: 1, alpha: 0.02).cgColor],
-                           in: context, from: CGPoint(x: bounds.midX, y: bounds.minY),
-                           to: CGPoint(x: bounds.midX, y: bounds.maxY))
-        context.restoreGState()
-    }
-}
-
-/// The state of one of the panel's switches: what it shows, whether it takes clicks, and what to tell
-/// the panel when the user flips it.
-@MainActor
-private final class SwitchState: ObservableObject {
-    @Published var isOn: Bool
-    @Published var isEnabled = true
-    /// Called when the user flips it, not when the panel sets it.
-    var onChange: ((Bool) -> Void)?
-
-    init(isOn: Bool) {
-        self.isOn = isOn
-    }
-}
-
-private struct SwitchView: View {
-    @ObservedObject var state: SwitchState
-    let label: String
-
-    var body: some View {
-        Toggle(label, isOn: Binding(
-            get: { state.isOn },
-            set: { newValue in
-                state.isOn = newValue // the knob moves at once, before the logo has faded
-                state.onChange?(newValue)
-            }
-        ))
-        .labelsHidden()
-        .toggleStyle(.switch)
-        .controlSize(.small)
-        // Not `.disabled`: SwiftUI would draw it faint over the row the panel has already greyed,
-        // and a switch that only looks disabled is what the panel wants here.
-        .allowsHitTesting(state.isEnabled)
-        .accessibilityLabel(label)
-    }
-}
-
-/// A switch as System Settings has one: the system's own toggle, at the small control size. (AppKit's
-/// `NSSwitch` is 54 wide with a round knob; a settings row's is 36 with a rounded one.)
-@MainActor
-private final class SwitchToggle: NSView {
-    let state: SwitchState
-    private let host: NSHostingView<SwitchView>
-
-    init(isOn: Bool, label: String) {
-        state = SwitchState(isOn: isOn)
-        host = NSHostingView(rootView: SwitchView(state: state, label: label))
-        super.init(frame: .zero)
-        host.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(host)
-        for orientation in [NSLayoutConstraint.Orientation.horizontal, .vertical] {
-            setContentHuggingPriority(.required, for: orientation)
-            setContentCompressionResistancePriority(.required, for: orientation)
-        }
-        // A little room around the toggle, so its focus ring isn't clipped.
-        NSLayoutConstraint.activate([
-            widthAnchor.constraint(equalToConstant: 38),
-            heightAnchor.constraint(equalToConstant: 22),
-            host.centerXAnchor.constraint(equalTo: centerXAnchor),
-            host.centerYAnchor.constraint(equalTo: centerYAnchor),
-        ])
-    }
-
-    @available(*, unavailable)
-    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
-
-    var isOn: Bool { state.isOn }
-    var onChange: ((Bool) -> Void)? {
-        get { state.onChange }
-        set { state.onChange = newValue }
-    }
-    var isEnabled: Bool {
-        get { state.isEnabled }
-        set { state.isEnabled = newValue }
-    }
-
-    /// Sets the switch without telling the panel, animating the knob when asked.
-    func set(on: Bool, animated: Bool) {
-        guard state.isOn != on else { return }
-        if animated {
-            withAnimation(.easeInOut(duration: 0.2)) { state.isOn = on }
-        } else {
-            state.isOn = on
-        }
-    }
-}
-
-/// A slider that knows while it's being dragged, so the panel leaves the knob where the pointer has it
-/// when the logo's brightness arrives. (`NSSlider` keeps that to itself.)
-private final class TrackingSlider: NSSlider {
-    private(set) var isTracking = false
-
-    override func mouseDown(with event: NSEvent) {
-        isTracking = true
-        super.mouseDown(with: event) // returns when the drag ends
-        isTracking = false
     }
 }
 
@@ -937,6 +794,7 @@ enum PanelRenderer {
                 panel.setMorseText("SOS")
                 panel.update(on)
                 panel.showGlow(options.glow)
+                panel.settle()
                 draw(MenuPicture(panel: panel, isDark: appearance == .darkAqua), appearance: appearance, options: options,
                      background: nil, to: "\(folder)/menu-\(suffix).png")
             }
@@ -975,6 +833,7 @@ enum PanelRenderer {
         panel.setMorseText("SOS")
         panel.update(state)
         panel.showGlow(state.isOn ? options.glow : 0)
+        panel.settle()
         let background = appearance == .darkAqua ? NSColor(white: 0.2, alpha: 1) : NSColor(white: 0.9, alpha: 1)
         draw(panel, appearance: appearance, options: options, background: options.transparent ? nil : background,
              to: path)
@@ -1147,26 +1006,23 @@ enum PanelRenderer {
         }
     }
 
-    /// Says which visible one-line labels are narrower than their text, so a narrower panel can be checked.
+    /// Says which of the panel's labels its column can't hold, so a narrower panel can be checked. SwiftUI
+    /// truncates one without saying so, so the text is measured here rather than read back from a label.
     private static func reportTruncatedLabels(in view: NSView, path: String) {
-        for subview in view.subviews where !subview.isHiddenOrHasHiddenAncestor {
-            // Both widths are without the label's own padding (its alignment rect).
-            if let label = subview as? NSTextField, label.cell?.wraps == false {
-                let width = label.alignmentRect(forFrame: label.frame).width
-                if width < label.intrinsicContentSize.width - 0.5 {
-                    print("\(path): \"\(label.stringValue)\" is truncated (\(width) of \(label.intrinsicContentSize.width) pt)")
-                }
-            } else if let label = subview as? NSTextField {
-                // A wrapping label cut to fewer lines than it needs drops its last words silently.
-                let rect = label.alignmentRect(forFrame: label.frame)
-                let needed = label.attributedStringValue.boundingRect(
-                    with: NSSize(width: rect.width, height: 10_000), options: [.usesLineFragmentOrigin, .usesFontLeading]
-                ).height.rounded(.up)
-                if rect.height < needed - 0.5 {
-                    print("\(path): \"\(label.stringValue)\" is cut (\(rect.height) of \(needed) pt high)")
-                }
+        func panel(in view: NSView) -> ControlPanel? {
+            if let panel = view as? ControlPanel { return panel }
+            for subview in view.subviews { if let found = panel(in: subview) { return found } }
+            return nil
+        }
+        guard let panel = panel(in: view) else { return }
+        // From the text column to the switch: the row's padding, its tile, its label's gap, the switch is
+        // 36 wide, and its own gap's worth of room at least.
+        let room = PanelMetrics.cardWidth - PanelMetrics.textColumn - PanelMetrics.controlInset - 36 - PanelMetrics.labelSpacing
+        for label in panel.rowLabels {
+            let width = (label as NSString).size(withAttributes: [.font: NSFont.systemFont(ofSize: 13)]).width
+            if width > room + 0.5 {
+                print("\(path): \"\(label)\" is truncated (\(room) of \(width) pt wide)")
             }
-            reportTruncatedLabels(in: subview, path: path)
         }
     }
 }
@@ -1190,3 +1046,4 @@ private extension LogoPreview {
     }
 }
 #endif
+

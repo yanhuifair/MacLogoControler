@@ -66,16 +66,18 @@ the output back (first done 2026-11-20). So:
   `LOGOLIGHT_RENDER_MENU=1` it also draws the whole menu (`menu-dark.png`, `menu-light.png`): the panel
   with the menu's own items under it, imitated (an `NSMenu` can't be drawn offscreen), in the menu's
   rounded shape on clear. That's what the README's menu GIF is made from.
-  The panel takes System Settings' look on macOS 27: groups drawn as glass (`GlassMaterial`; an
-  `NSGlassEffectView` can't be drawn into a picture, and glass on a menu's glass is discouraged), title
-  case headers, rows 36 high, and the system's own controls — `NSSlider`, `NSTextField`, `NSButton`, and
-  for the switches SwiftUI's small `Toggle` (`SwitchToggle`), because AppKit's `NSSwitch` is 54 wide
-  with a round knob where a settings row's is 36 with a rounded one. (`NSHostingView` receives clicks
-  inside a menu, checked with a posted mouse event.) The app draws switches and sliders in the accent
+  The panel is SwiftUI — an `NSHostingView` in the menu item's view, so the menu is AppKit's and the
+  panel inside it SwiftUI's — and takes System Settings' look on macOS 27: groups of rows, title case
+  headers, rows 36 high, and the system's own controls (small `Toggle`s, `Slider`, `TextField`,
+  bordered `Button`s). The cards' glass is drawn (`GlassMaterial`): `.glassEffect` and
+  `NSGlassEffectView` both come out blank in a picture, which is how the README's and the site's are
+  made, and glass on a menu's glass is discouraged. What the panel shows and greys out is worked out in
+  `PanelState` (LogoLightCore), which has tests. Typing in the field and flipping a switch were checked
+  inside a real menu with posted events: both work. The app draws switches and sliders in the accent
   colour only in the key window of the active app, so the renderer brings the app forward, orders an
   invisible window in and makes that key; without it the pictures would show them grey, as they are in
-  a menu before it's key. What the panel shows and greys out is worked out in `PanelState`
-  (LogoLightCore), which has tests.
+  a menu before it's key. SwiftUI lays out on its next turn, so `ControlPanel.settle()` waits for it
+  before the picture is measured.
   `LOGOLIGHT_OPEN_MENU=1 .build/debug/LogoLight` opens the real menu. Quit LogoLight first, and
   don't use it while the user is working: it interrupts them, and the menu won't stay open.
 
