@@ -1,10 +1,10 @@
 import AppKit
 import LogoLightCore
 
-/// The iOS Settings-style panel at the top of the menu: a switch for the logo first, where it's
-/// easiest to reach, then a live view of it, a brightness slider with the Battery and Charging switches
-/// under it, then a switch for each effect. Everything below the live view is greyed out while the logo is off,
-/// and the slider is while the battery sets the brightness.
+/// The panel at the top of the menu, in the style of a Control Center module on macOS 27: groups of rows
+/// on glass, a switch for the logo first, where it's easiest to reach, then a live view of it, a brightness
+/// slider with the Battery and Charging switches under it, then a switch for each effect. Everything below
+/// the live view is greyed out while the logo is off, and the slider is while the battery sets the brightness.
 @MainActor
 final class ControlPanel: NSView {
     var onLogoSwitched: ((Bool) -> Void)?
@@ -21,28 +21,34 @@ final class ControlPanel: NSView {
     /// The message edited (to remember it for next time).
     var onMorseTextChanged: ((String) -> Void)?
 
-    /// As narrow as the user asked for. The longest label, "Heartbeat" (61 pt at 13 pt, 64 with Bold
-    /// Text), still fits between its tile and its switch, which leave it 66. The menu's own items need
-    /// only 143, or 153 with Disable Password.
-    private static let width: CGFloat = 170
-    /// Around the panel's contents (8 at the top), and between its sections.
+    /// As narrow as it can be with AppKit's switch, which is 54 wide. The longest label, "Heartbeat"
+    /// (61 pt at 13 pt, 64 with Bold Text), still fits between its tile and its switch, which leave it
+    /// 68. The menu's own items need only 143, or 153 with Disable Password.
+    private static let width: CGFloat = 186
+    /// Around the panel's contents (9 at the top), and between its sections.
     private static let inset: CGFloat = 6
-    private static let topInset: CGFloat = 8
+    private static let topInset: CGFloat = 9
     private static let spacing: CGFloat = 6
     /// The width of the cards and of everything else in the panel.
     private static let cardWidth = width - 2 * inset
     /// How far text outside the cards is indented, on both sides.
     private static let textIndent: CGFloat = 12
-    private static let rowHeight: CGFloat = 36
+    /// A row: the height of a row in System Settings' lists.
+    private static let rowHeight: CGFloat = 34
     /// Where row text starts inside a card.
     fileprivate static let textColumn: CGFloat = 40
     /// Where the icon tiles start inside a card, and their size.
     private static let tileInset: CGFloat = 8
     fileprivate static let tileSize: CGFloat = 24
     /// How far a switch sits from the card's edge (the same as the tiles), and the least room between
-    /// it and its label.
-    private static let switchInset: CGFloat = 8
+    /// it and its label. A hairline between rows stops this far short of the trailing edge too.
+    fileprivate static let switchInset: CGFloat = 8
     private static let labelSpacing: CGFloat = 4
+    /// The corners of the cards: rounder than before, as macOS 26 and later draw them.
+    fileprivate static let cardRadius: CGFloat = 13
+    /// Between one group and the next group's header, and between a header and its card.
+    private static let headerSpacing: CGFloat = 8
+    private static let headerToCardSpacing: CGFloat = 4
     /// How the brightness and the effects look while the logo is off.
     private static let greyedOutAlpha: CGFloat = 0.4
     /// How long they take to grey out or come back when the logo is switched.
@@ -50,40 +56,42 @@ final class ControlPanel: NSView {
 
     private let stack = NSStackView()
     private let preview: LogoPreview
+    private lazy var previewWell = PreviewWell(content: preview)
     private let logoTile = IconTile(symbol: "lightbulb.fill", color: .systemOrange)
     private let logoLabel = NSTextField(labelWithString: "LogoLight")
-    private let logoSwitch = LogoSwitch()
+    private let logoSwitch = NSSwitch()
     private let brightnessCard = Card()
     private let brightnessRow = NSView()
     private let dimIcon = NSImageView()
     private let brightIcon = NSImageView()
-    private let brightnessSlider = LogoSlider()
+    private let brightnessSlider = TrackingSlider(value: 1, minValue: 0, maxValue: 1, target: nil, action: nil)
     /// Under the slider, in its card: the battery indicator, which has the brightness follow the charge.
     private let batteryTile = IconTile(symbol: "battery.75percent", color: .systemGreen)
     private let batteryLabel = NSTextField(labelWithString: "Battery")
-    private let batterySwitch = LogoSwitch()
+    private let batterySwitch = NSSwitch()
     private var batteryRow = NSView()
     /// Under it: the charging light, which has the logo breathe while the battery charges.
     private let chargingTile = IconTile(symbol: "bolt.fill", color: .systemYellow)
     private let chargingLabel = NSTextField(labelWithString: "Charging")
-    private let chargingSwitch = LogoSwitch()
+    private let chargingSwitch = NSSwitch()
     private var chargingRow = NSView()
     private let messageLabel = NSTextField(wrappingLabelWithString: "")
-    private let effectsHeader = NSTextField(labelWithString: "EFFECTS")
+    private let effectsHeader = NSTextField(labelWithString: "Effects")
     /// Each line of text outside the cards is in one of these, which indents it (and is what's hidden).
     private let messageContainer = NSStackView()
     private let effectsHeaderContainer = NSStackView()
     private let effectsCard = Card()
-    private var effectRows: [(effect: LogoEffect, tile: IconTile, label: NSTextField, toggle: LogoSwitch)] = []
+    private var effectRows: [(effect: LogoEffect, tile: IconTile, label: NSTextField, toggle: NSSwitch)] = []
     /// The Sound effect's row and the hairline above it, hidden where the sound can't be heard.
     private var soundRows: [NSView] = []
-    private let morseHeader = NSTextField(labelWithString: "MORSE CODE")
+    private let morseHeader = NSTextField(labelWithString: "Morse Code")
     private let morseHeaderContainer = NSStackView()
     private let morseCard = Card()
     private let morseRow = NSView()
     private let morseField = NSTextField()
-    private let playButton = SymbolButton(symbol: "play.fill", activeSymbol: "stop.fill")
-    private let loopButton = SymbolButton(symbol: "repeat", activeSymbol: "repeat")
+    /// Play, which turns to stop while a message is sent, and the loop switch beside it.
+    private let playButton = ControlPanel.symbolButton("play.fill")
+    private let loopButton = ControlPanel.symbolButton("repeat")
 
     /// What the panel shows now. `nil` until the first update, which always applies.
     private var state: PanelState?
@@ -109,12 +117,12 @@ final class ControlPanel: NSView {
         guard state != self.state else { return }
         let old = self.state
         self.state = state
-        preview.isHidden = !state.isSupported
+        previewWell.isHidden = !state.isSupported
         let animated = window?.isVisible == true
 
         // The switch shows what was asked for, even while the logo is still fading. It only looks
         // disabled while a password is needed.
-        logoSwitch.setOn(state.isOn, animated: animated)
+        set(logoSwitch, on: state.isOn, animated: animated)
         logoSwitch.isEnabled = state.canSwitch
         logoLabel.textColor = state.isSupported ? .labelColor : .tertiaryLabelColor
         logoTile.isDimmed = !state.isSupported
@@ -125,21 +133,22 @@ final class ControlPanel: NSView {
         morseHeaderContainer.isHidden = !state.showsAdjustments
         morseCard.isHidden = !state.showsAdjustments
 
-        if !brightnessSlider.isTracking { brightnessSlider.value = state.brightness }
+        if !brightnessSlider.isTracking { brightnessSlider.doubleValue = state.brightness }
         brightnessSlider.isEnabled = state.canChangeBrightness
-        batterySwitch.setOn(state.followsBattery, animated: animated)
-        batterySwitch.acceptsInput = state.canAdjust
-        chargingSwitch.setOn(state.breathesWhileCharging, animated: animated)
-        chargingSwitch.acceptsInput = state.canAdjust
+        set(batterySwitch, on: state.followsBattery, animated: animated)
+        batterySwitch.isEnabled = state.canAdjust
+        set(chargingSwitch, on: state.breathesWhileCharging, animated: animated)
+        chargingSwitch.isEnabled = state.canAdjust
         for row in effectRows {
-            row.toggle.setOn(row.effect == state.effect, animated: animated)
-            row.toggle.acceptsInput = state.canAdjust
+            set(row.toggle, on: row.effect == state.effect, animated: animated)
+            row.toggle.isEnabled = state.canAdjust
         }
         for view in soundRows { view.isHidden = !state.showsSound }
         morseField.isEnabled = state.canAdjust
-        playButton.isActive = state.isSendingMorse
+        playButton.state = state.isSendingMorse ? .on : .off
+        playButton.image = Self.symbol(state.isSendingMorse ? "stop.fill" : "play.fill", size: 11)
         playButton.toolTip = state.isSendingMorse ? "Stop" : "Play"
-        loopButton.isActive = state.morseLoops
+        loopButton.state = state.morseLoops ? .on : .off
         updateMorseButtons()
         greyOut([brightnessRow: !state.canChangeBrightness, batteryRow: !state.canAdjust,
                  chargingRow: !state.canAdjust, effectsCard.rows: !state.canAdjust,
@@ -171,6 +180,13 @@ final class ControlPanel: NSView {
         }
     }
 
+    /// Sets a switch to `on`, animating its knob when the panel is on screen.
+    private func set(_ toggle: NSSwitch, on: Bool, animated: Bool) {
+        let state: NSControl.StateValue = on ? .on : .off
+        guard toggle.state != state else { return }
+        if animated { toggle.animator().state = state } else { toggle.state = state }
+    }
+
     // MARK: - Layout
 
     private func build() {
@@ -195,13 +211,15 @@ final class ControlPanel: NSView {
         logoCard.add([row(tile: logoTile, label: logoLabel, toggle: logoSwitch)])
         addFullWidth(logoCard)
 
-        addFullWidth(preview)
+        addFullWidth(previewWell)
 
         dimIcon.image = Self.symbol("sun.min.fill", size: 11)
         brightIcon.image = Self.symbol("sun.max.fill", size: 15)
         for icon in [dimIcon, brightIcon] { icon.contentTintColor = .secondaryLabelColor }
+        brightnessSlider.isContinuous = true
+        brightnessSlider.target = self
+        brightnessSlider.action = #selector(brightnessChanged)
         brightnessSlider.setAccessibilityLabel("Brightness")
-        brightnessSlider.onChange = { [weak self] in self?.onBrightnessChanged?($0) }
         layOutBrightnessRow()
         batterySwitch.target = self
         batterySwitch.action = #selector(batterySwitchChanged)
@@ -225,15 +243,16 @@ final class ControlPanel: NSView {
 
         // Effects: one switch each; at most one is on. Sound (the logo follows the sound the Mac
         // plays) is last, and only where the sound can be heard.
-        effectsHeader.font = .systemFont(ofSize: NSFont.smallSystemFontSize - 1, weight: .medium)
+        effectsHeader.font = .systemFont(ofSize: NSFont.smallSystemFontSize, weight: .semibold)
         effectsHeader.textColor = .secondaryLabelColor
-        addIndented(effectsHeader, in: effectsHeaderContainer)
+        addIndented(effectsHeader, in: effectsHeaderContainer, topSpacing: Self.headerSpacing)
+        stack.setCustomSpacing(Self.headerToCardSpacing, after: effectsHeaderContainer)
 
         var rows: [NSView] = []
         for effect in LogoEffect.allCases where effect != .none {
             let tile = IconTile(symbol: Self.symbolName(for: effect), color: Self.color(for: effect))
             let label = NSTextField(labelWithString: effect.title)
-            let toggle = LogoSwitch()
+            let toggle = NSSwitch()
             toggle.target = self
             toggle.action = #selector(effectSwitchChanged(_:))
             toggle.setAccessibilityLabel(effect.title)
@@ -254,7 +273,8 @@ final class ControlPanel: NSView {
         // switch, as in a music player, makes it repeat until it's stopped.
         morseHeader.font = effectsHeader.font
         morseHeader.textColor = .secondaryLabelColor
-        addIndented(morseHeader, in: morseHeaderContainer)
+        addIndented(morseHeader, in: morseHeaderContainer, topSpacing: Self.headerSpacing)
+        stack.setCustomSpacing(Self.headerToCardSpacing, after: morseHeaderContainer)
         layOutMorseRow()
         morseCard.add([morseRow])
         addFullWidth(morseCard)
@@ -280,8 +300,6 @@ final class ControlPanel: NSView {
         playButton.action = #selector(playPressed)
         loopButton.toolTip = "Repeat until stopped"
         loopButton.setAccessibilityLabel("Repeat Morse code")
-        loopButton.activeDescription = "On"
-        loopButton.inactiveDescription = "Off"
         loopButton.target = self
         loopButton.action = #selector(loopPressed)
         for view in [morseField, playButton, loopButton] as [NSView] {
@@ -311,13 +329,13 @@ final class ControlPanel: NSView {
     /// switch can always be flipped.
     private func updateMorseButtons() {
         let canAdjust = state?.canAdjust ?? false
-        playButton.isEnabled = canAdjust && (MorseCode.canSend(morseField.stringValue) || playButton.isActive)
+        playButton.isEnabled = canAdjust && (MorseCode.canSend(morseField.stringValue) || playButton.state == .on)
         loopButton.isEnabled = canAdjust
         let notation = MorseCode.notation(morseField.stringValue)
         morseField.toolTip = notation.isEmpty ? "Letters, digits and punctuation" : notation
     }
 
-    private func row(tile: IconTile, label: NSTextField, toggle: LogoSwitch) -> NSView {
+    private func row(tile: IconTile, label: NSTextField, toggle: NSSwitch) -> NSView {
         label.font = .systemFont(ofSize: 13)
         label.lineBreakMode = .byTruncatingTail
 
@@ -349,8 +367,9 @@ final class ControlPanel: NSView {
             // The small sun sits under the icon tiles, and the track starts at the text column.
             dimIcon.centerXAnchor.constraint(equalTo: brightnessRow.leadingAnchor, constant: Self.tileInset + Self.tileSize / 2),
             dimIcon.centerYAnchor.constraint(equalTo: brightnessRow.centerYAnchor),
+            // AppKit's slider draws its track 8 in from its edge, so it lines up with the text.
             brightnessSlider.leadingAnchor.constraint(equalTo: brightnessRow.leadingAnchor,
-                                                      constant: Self.textColumn - LogoSlider.knobDiameter / 2),
+                                                      constant: Self.textColumn - 8),
             brightnessSlider.centerYAnchor.constraint(equalTo: brightnessRow.centerYAnchor),
             brightnessSlider.trailingAnchor.constraint(equalTo: brightIcon.leadingAnchor, constant: -4),
             brightIcon.trailingAnchor.constraint(equalTo: brightnessRow.trailingAnchor, constant: -12),
@@ -363,10 +382,10 @@ final class ControlPanel: NSView {
         view.widthAnchor.constraint(equalToConstant: Self.cardWidth).isActive = true
     }
 
-    /// Adds text outside the cards, indented in `container` as in iOS Settings.
-    private func addIndented(_ text: NSView, in container: NSStackView) {
+    /// Adds text outside the cards, indented as in System Settings, with `topSpacing` above it.
+    private func addIndented(_ text: NSView, in container: NSStackView, topSpacing: CGFloat = 0) {
         container.addArrangedSubview(text)
-        container.edgeInsets = NSEdgeInsets(top: 0, left: Self.textIndent, bottom: 0, right: Self.textIndent)
+        container.edgeInsets = NSEdgeInsets(top: topSpacing, left: Self.textIndent, bottom: 0, right: Self.textIndent)
         addFullWidth(container)
     }
 
@@ -379,19 +398,23 @@ final class ControlPanel: NSView {
     // MARK: - Actions
 
     @objc private func logoSwitchChanged() {
-        onLogoSwitched?(logoSwitch.isOn)
+        onLogoSwitched?(logoSwitch.state == .on)
+    }
+
+    @objc private func brightnessChanged() {
+        onBrightnessChanged?(brightnessSlider.doubleValue)
     }
 
     @objc private func batterySwitchChanged() {
-        onFollowsBatteryChanged?(batterySwitch.isOn)
+        onFollowsBatteryChanged?(batterySwitch.state == .on)
     }
 
     @objc private func chargingSwitchChanged() {
-        onBreathesWhileChargingChanged?(chargingSwitch.isOn)
+        onBreathesWhileChargingChanged?(chargingSwitch.state == .on)
     }
 
     @objc private func playPressed() {
-        if playButton.isActive {
+        if playButton.state == .on {
             onMorseStop?()
         } else {
             onMorsePlay?(morseField.stringValue)
@@ -399,19 +422,19 @@ final class ControlPanel: NSView {
     }
 
     @objc private func loopPressed() {
-        onMorseLoopsChanged?(!loopButton.isActive)
+        onMorseLoopsChanged?(loopButton.state == .on)
     }
 
     /// Return plays the message, unless one is being sent (stopping it takes the button).
     @objc private func morseFieldReturned() {
-        guard playButton.isEnabled, !playButton.isActive else { return }
+        guard playButton.isEnabled, playButton.state != .on else { return }
         onMorsePlay?(morseField.stringValue)
     }
 
-    @objc private func effectSwitchChanged(_ sender: LogoSwitch) {
+    @objc private func effectSwitchChanged(_ sender: NSSwitch) {
         guard let row = effectRows.first(where: { $0.toggle === sender }) else { return }
-        let effect: LogoEffect = sender.isOn ? row.effect : .none
-        for other in effectRows where other.toggle !== sender { other.toggle.setOn(false, animated: true) }
+        let effect: LogoEffect = sender.state == .on ? row.effect : .none
+        for other in effectRows where other.toggle !== sender { set(other.toggle, on: false, animated: true) }
         onEffectChosen?(effect)
     }
 
@@ -437,6 +460,16 @@ final class ControlPanel: NSView {
         }
     }
 
+    /// A native icon button, bordered as a toolbar's are. It's a toggle, so it stays lit while its
+    /// action is under way: Play while a message is sent, Repeat while it loops.
+    private static func symbolButton(_ name: String) -> NSButton {
+        let button = NSButton(image: symbol(name, size: 11) ?? NSImage(), target: nil, action: nil)
+        button.bezelStyle = .texturedRounded
+        button.setButtonType(.toggle)
+        button.imagePosition = .imageOnly
+        return button
+    }
+
     fileprivate static func symbol(_ name: String, size: CGFloat) -> NSImage? {
         NSImage(systemSymbolName: name, accessibilityDescription: nil)?
             .withSymbolConfiguration(.init(pointSize: size, weight: .medium))
@@ -450,96 +483,6 @@ extension ControlPanel: NSTextFieldDelegate {
         }
         updateMorseButtons()
         onMorseTextChanged?(morseField.stringValue)
-    }
-}
-
-/// A round button with an SF Symbol, drawn by the app like `LogoSwitch` (so it has its colours from the
-/// menu's first frame). While active it's filled with the accent colour and shows `activeSymbol`.
-final class SymbolButton: NSControl {
-    static let diameter: CGFloat = 24
-    private let symbol: String
-    private let activeSymbol: String
-    private var isPressed = false { didSet { needsDisplay = true } }
-
-    /// What VoiceOver says while it's active, and while it isn't.
-    var activeDescription = "Playing"
-    var inactiveDescription: String?
-
-    /// Whether this button's action is under way (pressing it again stops it), or, for a switch,
-    /// whether it's on.
-    var isActive = false {
-        didSet {
-            guard isActive != oldValue else { return }
-            needsDisplay = true
-            NSAccessibility.post(element: self, notification: .valueChanged)
-        }
-    }
-
-    override var isEnabled: Bool { didSet { needsDisplay = true } }
-
-    init(symbol: String, activeSymbol: String) {
-        self.symbol = symbol
-        self.activeSymbol = activeSymbol
-        super.init(frame: NSRect(x: 0, y: 0, width: Self.diameter, height: Self.diameter))
-        for orientation in [NSLayoutConstraint.Orientation.horizontal, .vertical] {
-            setContentHuggingPriority(.required, for: orientation)
-            setContentCompressionResistancePriority(.required, for: orientation)
-        }
-    }
-
-    @available(*, unavailable)
-    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
-
-    override var intrinsicContentSize: NSSize { NSSize(width: Self.diameter, height: Self.diameter) }
-    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
-
-    override func draw(_ dirtyRect: NSRect) {
-        let circle = NSBezierPath(ovalIn: bounds.insetBy(dx: 0.5, dy: 0.5))
-        let tint: NSColor
-        if isActive {
-            NSColor.controlAccentColor.withAlphaComponent(isPressed ? 0.75 : 1).setFill()
-            tint = .white
-        } else {
-            NSColor.labelColor.withAlphaComponent(isPressed ? 0.2 : 0.1).setFill()
-            tint = .labelColor
-        }
-        circle.fill()
-        guard let image = NSImage(systemSymbolName: isActive ? activeSymbol : symbol, accessibilityDescription: nil)?
-            .withSymbolConfiguration(NSImage.SymbolConfiguration(pointSize: 10, weight: .semibold)
-                .applying(NSImage.SymbolConfiguration(paletteColors: [tint])))
-        else { return }
-        let size = image.size
-        let rect = NSRect(x: (bounds.width - size.width) / 2, y: (bounds.height - size.height) / 2,
-                          width: size.width, height: size.height)
-        image.draw(in: rect, from: .zero, operation: .sourceOver, fraction: isEnabled ? 1 : 0.35)
-    }
-
-    override func mouseDown(with event: NSEvent) {
-        guard isEnabled else { return }
-        isPressed = true
-    }
-
-    override func mouseDragged(with event: NSEvent) {
-        guard isEnabled else { return }
-        isPressed = bounds.contains(convert(event.locationInWindow, from: nil))
-    }
-
-    override func mouseUp(with event: NSEvent) {
-        guard isEnabled, isPressed else { return }
-        isPressed = false
-        sendAction(action, to: target)
-    }
-
-    // MARK: Accessibility
-
-    override func isAccessibilityElement() -> Bool { true }
-    override func accessibilityRole() -> NSAccessibility.Role? { .button }
-    override func isAccessibilityEnabled() -> Bool { isEnabled }
-    override func accessibilityValue() -> Any? { isActive ? activeDescription : inactiveDescription }
-    override func accessibilityPerformPress() -> Bool {
-        guard isEnabled else { return false }
-        sendAction(action, to: target)
-        return true
     }
 }
 
@@ -641,16 +584,13 @@ private final class LogoPreview: NSView {
     }
 }
 
-/// A rounded, slightly raised group of rows, like a section in iOS Settings.
+/// A rounded, slightly raised group of rows, like a module in Control Center.
 private final class Card: NSView {
     /// The rows, without the card's background (e.g. to fade them).
     let rows = NSStackView()
 
     init() {
         super.init(frame: .zero)
-        wantsLayer = true
-        layer?.cornerRadius = 10
-        layer?.cornerCurve = .continuous
         rows.orientation = .vertical
         rows.alignment = .width
         rows.spacing = 0
@@ -671,13 +611,93 @@ private final class Card: NSView {
         views.forEach(rows.addArrangedSubview)
     }
 
-    override var wantsUpdateLayer: Bool { true }
-
-    override func updateLayer() {
-        let isDark = effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
-        layer?.backgroundColor = NSColor(white: 1, alpha: isDark ? 0.08 : 0.75).cgColor
+    override func draw(_ dirtyRect: NSRect) {
+        GlassMaterial.draw(in: bounds, radius: ControlPanel.cardRadius, appearance: effectiveAppearance)
     }
 }
+
+/// The live view in a group of its own, as a Control Center module holds its control.
+private final class PreviewWell: NSView {
+    init(content: NSView) {
+        super.init(frame: .zero)
+        content.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(content)
+        NSLayoutConstraint.activate([
+            content.topAnchor.constraint(equalTo: topAnchor, constant: 9),
+            content.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -9),
+            content.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 9),
+            content.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -9),
+        ])
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override func draw(_ dirtyRect: NSRect) {
+        GlassMaterial.draw(in: bounds, radius: ControlPanel.cardRadius, appearance: effectiveAppearance, recessed: true)
+    }
+}
+
+/// The glass the panel's groups are drawn on: the lit, translucent material macOS 26 and later use for
+/// Control Center's modules.
+///
+/// Drawn rather than made with `NSGlassEffectView`, for two reasons: a glass view draws as a blank
+/// shape into a picture (the README's are made that way, by `PanelRenderer`), and a menu is glass
+/// itself, which the system asks glass not to sit on.
+private enum GlassMaterial {
+    /// Fills `rect` with glass: a soft gradient, and a hairline rim that's lit at the top and fades
+    /// toward the bottom, as light falls on an edge. `recessed` turns both around for a well that
+    /// looks cut into the panel, e.g. for the live view.
+    static func draw(in rect: NSRect, radius: CGFloat, appearance: NSAppearance, recessed: Bool = false) {
+        guard let context = NSGraphicsContext.current?.cgContext else { return }
+        let isDark = appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+        let body = CGPath(roundedRect: rect.insetBy(dx: 0.5, dy: 0.5), cornerWidth: radius - 0.5,
+                          cornerHeight: radius - 0.5, transform: nil)
+
+        context.saveGState()
+        context.addPath(body)
+        context.clip()
+        let fill: [CGColor]
+        if recessed {
+            fill = isDark
+                ? [NSColor(white: 0, alpha: 0.22).cgColor, NSColor(white: 0, alpha: 0.12).cgColor]
+                : [NSColor(white: 0, alpha: 0.06).cgColor, NSColor(white: 0, alpha: 0.03).cgColor]
+        } else {
+            fill = isDark
+                ? [NSColor(white: 1, alpha: 0.155).cgColor, NSColor(white: 1, alpha: 0.075).cgColor]
+                : [NSColor(white: 1, alpha: 0.92).cgColor, NSColor(white: 1, alpha: 0.7).cgColor]
+        }
+        draw(fill, in: context, from: CGPoint(x: rect.midX, y: rect.minY), to: CGPoint(x: rect.midX, y: rect.maxY))
+        context.restoreGState()
+
+        context.saveGState()
+        context.addPath(body)
+        context.setLineWidth(1)
+        context.replacePathWithStrokedPath()
+        context.clip()
+        let rim: [CGColor]
+        if recessed {
+            rim = isDark
+                ? [NSColor(white: 0, alpha: 0.45).cgColor, NSColor(white: 1, alpha: 0.06).cgColor]
+                : [NSColor(white: 0, alpha: 0.14).cgColor, NSColor(white: 1, alpha: 0.5).cgColor]
+        } else {
+            rim = isDark
+                ? [NSColor(white: 1, alpha: 0.26).cgColor, NSColor(white: 1, alpha: 0.04).cgColor]
+                : [NSColor(white: 0, alpha: 0.10).cgColor, NSColor(white: 0, alpha: 0.02).cgColor]
+        }
+        draw(rim, in: context, from: CGPoint(x: rect.midX, y: rect.minY), to: CGPoint(x: rect.midX, y: rect.maxY))
+        context.restoreGState()
+    }
+
+    /// A linear gradient straight down `from` the top `to` the bottom.
+    static func draw(_ colors: [CGColor], in context: CGContext, from start: CGPoint, to end: CGPoint) {
+        guard let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: colors as CFArray,
+                                        locations: [0, 1])
+        else { return }
+        context.drawLinearGradient(gradient, start: start, end: end, options: [])
+    }
+}
+
 
 /// A hairline between rows that starts under the row's text, as in iOS Settings.
 private final class Separator: NSView {
@@ -687,11 +707,11 @@ private final class Separator: NSView {
         NSColor.separatorColor.setFill()
         let thickness = 1 / (window?.backingScaleFactor ?? 2)
         let start = ControlPanel.textColumn
-        NSRect(x: start, y: 0, width: max(0, bounds.width - start), height: thickness).fill()
+        NSRect(x: start, y: 0, width: max(0, bounds.width - start - ControlPanel.switchInset), height: thickness).fill()
     }
 }
 
-/// A white symbol on a coloured rounded square, like the icons in iOS Settings.
+/// A white symbol on a coloured rounded square, like the icons in System Settings.
 private final class IconTile: NSView {
     private let color: NSColor
     var isDimmed = false { didSet { alphaValue = isDimmed ? 0.35 : 1 } }
@@ -699,9 +719,7 @@ private final class IconTile: NSView {
     init(symbol: String, color: NSColor) {
         self.color = color
         super.init(frame: .zero)
-        wantsLayer = true
-        layer?.cornerRadius = 6
-        layer?.cornerCurve = .continuous
+        wantsLayer = true // so it fades with `alphaValue` where the logo is, or isn't, supported
         let image = NSImageView(image: ControlPanel.symbol(symbol, size: 12) ?? NSImage())
         image.contentTintColor = .white
         image.translatesAutoresizingMaskIntoConstraints = false
@@ -717,98 +735,34 @@ private final class IconTile: NSView {
     @available(*, unavailable)
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
-    override var wantsUpdateLayer: Bool { true }
-
-    override func updateLayer() {
-        layer?.backgroundColor = color.cgColor
+    override func draw(_ dirtyRect: NSRect) {
+        let radius: CGFloat = 6.5
+        let tile = NSBezierPath(roundedRect: bounds, xRadius: radius, yRadius: radius)
+        // Lit from above, as the system's own icons are.
+        NSGradient(starting: color.blended(withFraction: 0.3, of: .white) ?? color, ending: color)?
+            .draw(in: tile, angle: -90)
+        guard let context = NSGraphicsContext.current?.cgContext else { return }
+        context.saveGState()
+        context.addPath(CGPath(roundedRect: bounds, cornerWidth: radius, cornerHeight: radius, transform: nil))
+        context.setLineWidth(1)
+        context.replacePathWithStrokedPath()
+        context.clip()
+        GlassMaterial.draw([NSColor(white: 1, alpha: 0.28).cgColor, NSColor(white: 1, alpha: 0.02).cgColor],
+                           in: context, from: CGPoint(x: bounds.midX, y: bounds.minY),
+                           to: CGPoint(x: bounds.midX, y: bounds.maxY))
+        context.restoreGState()
     }
 }
 
-/// An iOS-style slider: a thin rounded track, filled up to a round white knob.
-final class LogoSlider: NSView {
-    /// 0…1.
-    var value = 1.0 { didSet { needsDisplay = true } }
-    /// Whether it takes input. It looks the same either way: the panel greys out its whole row.
-    var isEnabled = true
-    var onChange: ((Double) -> Void)?
+/// A slider that knows while it's being dragged, so the panel leaves the knob where the pointer has it
+/// when the logo's brightness arrives. (`NSSlider` keeps that to itself.)
+private final class TrackingSlider: NSSlider {
     private(set) var isTracking = false
 
-    static let knobDiameter: CGFloat = 22
-    private let trackHeight: CGFloat = 4
-
-    override var intrinsicContentSize: NSSize { NSSize(width: NSView.noIntrinsicMetric, height: 28) }
-    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
-
-    override func draw(_ dirtyRect: NSRect) {
-        let radius = Self.knobDiameter / 2
-        let track = NSRect(x: radius, y: bounds.midY - trackHeight / 2,
-                           width: max(0, bounds.width - Self.knobDiameter), height: trackHeight)
-        let knobX = track.minX + CGFloat(value) * track.width
-
-        NSColor.labelColor.withAlphaComponent(0.12).setFill()
-        NSBezierPath(roundedRect: track, xRadius: trackHeight / 2, yRadius: trackHeight / 2).fill()
-
-        var filled = track
-        filled.size.width = knobX - track.minX
-        NSColor.controlAccentColor.setFill()
-        NSBezierPath(roundedRect: filled, xRadius: trackHeight / 2, yRadius: trackHeight / 2).fill()
-
-        let knob = NSRect(x: knobX - radius, y: bounds.midY - radius, width: Self.knobDiameter, height: Self.knobDiameter)
-            .insetBy(dx: 1, dy: 1)
-        NSGraphicsContext.saveGraphicsState()
-        let shadow = NSShadow()
-        shadow.shadowColor = NSColor.black.withAlphaComponent(0.3)
-        shadow.shadowBlurRadius = 2.5
-        shadow.shadowOffset = NSSize(width: 0, height: -0.5)
-        shadow.set()
-        NSColor.white.setFill()
-        NSBezierPath(ovalIn: knob).fill()
-        NSGraphicsContext.restoreGraphicsState()
-        NSColor.black.withAlphaComponent(0.06).setStroke()
-        NSBezierPath(ovalIn: knob.insetBy(dx: 0.25, dy: 0.25)).stroke()
-    }
-
     override func mouseDown(with event: NSEvent) {
-        guard isEnabled else { return }
         isTracking = true
-        track(event)
-    }
-
-    override func mouseDragged(with event: NSEvent) {
-        guard isEnabled, isTracking else { return }
-        track(event)
-    }
-
-    override func mouseUp(with event: NSEvent) {
+        super.mouseDown(with: event) // returns when the drag ends
         isTracking = false
-    }
-
-    private func track(_ event: NSEvent) {
-        let x = convert(event.locationInWindow, from: nil).x
-        let usable = max(1, bounds.width - Self.knobDiameter)
-        setValueFromUser(Double((x - Self.knobDiameter / 2) / usable))
-    }
-
-    private func setValueFromUser(_ newValue: Double) {
-        let clamped = min(max(newValue, 0), 1)
-        guard clamped != value else { return }
-        value = clamped
-        onChange?(clamped)
-    }
-
-    // MARK: Accessibility
-
-    override func isAccessibilityElement() -> Bool { true }
-    override func accessibilityRole() -> NSAccessibility.Role? { .slider }
-    override func accessibilityValue() -> Any? { NSNumber(value: value) }
-    override func isAccessibilityEnabled() -> Bool { isEnabled }
-    override func accessibilityPerformIncrement() -> Bool { step(by: 0.1) }
-    override func accessibilityPerformDecrement() -> Bool { step(by: -0.1) }
-
-    private func step(by delta: Double) -> Bool {
-        guard isEnabled else { return false }
-        setValueFromUser(value + delta)
-        return true
     }
 }
 
@@ -881,6 +835,9 @@ enum PanelRenderer {
     private final class RenderWindow: NSWindow {
         var scale: CGFloat?
         override var backingScaleFactor: CGFloat { scale ?? super.backingScaleFactor }
+        /// The switches and the slider take their colours from the key window's, so without this they'd
+        /// be drawn grey, as they are in a menu before it becomes key.
+        override var canBecomeKey: Bool { true }
     }
 
     static func render(to folder: String) {
@@ -969,6 +926,20 @@ enum PanelRenderer {
         window.isOpaque = background != nil
         window.contentView = view
         window.setContentSize(view.frame.size)
+        // Invisible, but ordered in and key, as a menu is while it's open: the switches and the slider
+        // take their colours from a key window, and would be drawn grey otherwise. (They also need the
+        // app itself to be active, which `AppDelegate` sees to before the first picture is drawn.)
+        window.alphaValue = 0
+        window.ignoresMouseEvents = true
+        window.orderFrontRegardless()
+        window.makeKey()
+        // AppKit's controls draw in the accent colour only in a key window, so wait for it to be one.
+        let deadline = Date().addingTimeInterval(0.3)
+        while !window.isKeyWindow, Date() < deadline {
+            RunLoop.current.run(mode: .default, before: Date().addingTimeInterval(0.01))
+        }
+        // And without a text selection or a focus ring in the picture.
+        window.makeFirstResponder(nil)
         window.displayIfNeeded()
         if view is ControlPanel || view is MenuPicture {
             reportTruncatedLabels(in: view, path: path)
@@ -997,6 +968,7 @@ enum PanelRenderer {
         cg.scaleBy(x: CGFloat(scale), y: -CGFloat(scale))
         layer.render(in: cg)
         try? rep.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: path))
+        window.orderOut(nil)
     }
 
     /// `render(in:)` draws an image set as a layer's contents (the live view's logo) as it would for the screen, and

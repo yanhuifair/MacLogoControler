@@ -66,9 +66,13 @@ the output back (first done 2026-11-20). So:
   `LOGOLIGHT_RENDER_MENU=1` it also draws the whole menu (`menu-dark.png`, `menu-light.png`): the panel
   with the menu's own items under it, imitated (an `NSMenu` can't be drawn offscreen), in the menu's
   rounded shape on clear. That's what the README's menu GIF is made from.
-  The switches are `LogoSwitch`, drawn by the app: AppKit's `NSSwitch` draws grey inside a menu until
-  the menu's window becomes key, a moment after it opens, which looked slow. What the panel shows
-  and greys out is worked out in `PanelState` (LogoLightCore), which has tests.
+  The panel is in the style of Control Center on macOS 26 and later: its groups are drawn as glass
+  (`GlassMaterial`; `NSGlassEffectView` can't be drawn into a picture, and glass on a menu's glass is
+  discouraged), and every control in it is AppKit's: `NSSwitch`, `NSSlider`, `NSTextField` and
+  `NSButton`. AppKit draws switches and sliders in the accent colour only in the key window of the
+  active app, so the renderer brings the app forward, orders an invisible window in and makes that
+  key; without it the pictures would show them grey, as they are in a menu before it's key. What the
+  panel shows and greys out is worked out in `PanelState` (LogoLightCore), which has tests.
   `LOGOLIGHT_OPEN_MENU=1 .build/debug/LogoLight` opens the real menu. Quit LogoLight first, and
   don't use it while the user is working: it interrupts them, and the menu won't stay open.
 

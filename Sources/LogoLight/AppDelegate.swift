@@ -9,8 +9,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         #if DEBUG
         // Draws the control panel to PNGs and quits, without touching the logo (debug builds only).
         if let folder = ProcessInfo.processInfo.environment["LOGOLIGHT_RENDER_PANEL"] {
-            PanelRenderer.render(to: folder)
-            NSApp.terminate(nil)
+            // The switches and the slider are AppKit's, and draw in the accent colour only in the key
+            // window of the active app, so the app is brought forward for the moment the pictures take.
+            // (It has no windows of its own; the renderer's are clear and out of the way.)
+            NSApp.activate(ignoringOtherApps: true)
+            waitUntilActive {
+                PanelRenderer.render(to: folder)
+                NSApp.terminate(nil)
+            }
             return
         }
         #endif
@@ -30,6 +36,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
         #endif
+    }
+
+    /// Runs `action` once the app is active, which is what its AppKit controls need to draw in the
+    /// accent colour, or after a second without it: the pictures then show them grey.
+    private func waitUntilActive(deadline: Date = Date().addingTimeInterval(1), then action: @escaping @MainActor () -> Void) {
+        guard !NSApp.isActive, Date() < deadline else { return action() }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            MainActor.assumeIsolated { self.waitUntilActive(deadline: deadline, then: action) }
+        }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
