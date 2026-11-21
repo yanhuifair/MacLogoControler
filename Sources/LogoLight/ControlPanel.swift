@@ -523,7 +523,8 @@ private struct PanelCard<Content: View>: View {
     var body: some View {
         VStack(spacing: 0) { content }
             .frame(maxWidth: .infinity)
-            .background(GlassMaterial())
+            .background(GlassMaterial(shape: RoundedRectangle(cornerRadius: PanelMetrics.cardRadius,
+                                                              style: .continuous)))
     }
 }
 
@@ -614,15 +615,8 @@ private struct EffectTabs: View {
             }
         }
         .padding(3)
-        // One background, and one only: the capsule the tabs sit in, with the lozenge on top of it.
-        .background {
-            Capsule(style: .continuous)
-                .fill(isDark ? Color.white.opacity(0.07) : Color.black.opacity(0.05))
-                .overlay {
-                    Capsule(style: .continuous)
-                        .strokeBorder(isDark ? Color.white.opacity(0.10) : Color.black.opacity(0.05), lineWidth: 1)
-                }
-        }
+        // One background, and one only: the capsule the tabs sit in, in the cards' own material.
+        .background(GlassMaterial(shape: Capsule(style: .continuous)))
         // The lozenge slides, as a glass bar's does: quick, with a little bounce, stretching on the way
         // when the tabs it crosses are of different widths.
         .animation(.spring(response: 0.34, dampingFraction: 0.72), value: selection)
@@ -683,11 +677,13 @@ private struct RowSeparator: View {
 
 /// The lit, translucent material macOS 26 and later draw their settings' groups on: a soft gradient, and a
 /// hairline rim that's lit at the top and fades toward the bottom, as light falls on an edge.
-private struct GlassMaterial: View {
+private struct GlassMaterial<S: InsettableShape>: View {
+    /// The shape it's drawn in: a card's rounded rectangle, or the capsule the tabs sit in.
+    var shape: S
+
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        let shape = RoundedRectangle(cornerRadius: PanelMetrics.cardRadius, style: .continuous)
         let isDark = colorScheme == .dark
         let fill = isDark
             ? [Color.white.opacity(0.155), Color.white.opacity(0.075)]
