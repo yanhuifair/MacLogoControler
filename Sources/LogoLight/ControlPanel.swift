@@ -75,6 +75,14 @@ final class ControlPanel: NSView {
     /// Top-down, as the menu's own items beside it are drawn, and as the picture of it is.
     override var isFlipped: Bool { true }
 
+    /// Draws the panel in `appearance`, which a menu item's view doesn't take from the menu's window on
+    /// its own: without it, SwiftUI draws the panel light whatever the menu is.
+    func adopt(_ appearance: NSAppearance?) {
+        guard let appearance else { return }
+        self.appearance = appearance
+        host.appearance = appearance
+    }
+
     /// Shows how brightly the logo is glowing right now, from 0 to 1.
     func showGlow(_ glow: Double) {
         preview.show(glow: glow)
@@ -117,6 +125,13 @@ final class ControlPanel: NSView {
         return ["LogoLight", "Battery", "Charging"]
             + LogoEffect.allCases.filter { $0 != .none && ($0 != .sound || state.showsSound) }.map(\.title)
     }
+}
+
+/// Whether the panel is being drawn into a picture rather than shown. The system's tab bar doesn't come
+/// out in an offscreen rendering (`CALayer.render(in:)`), so the pictures are made with the drawn one.
+@MainActor
+enum PanelPictures {
+    static var isDrawing = false
 }
 
 /// The numbers the panel is laid out with, the same as System Settings' where they can be.
@@ -578,6 +593,25 @@ private struct EffectTabs: View {
     @Namespace private var pill
 
     var body: some View {
+        if #available(macOS 15, *), !PanelPictures.isDrawing {
+            // macOS 26's tab bar: the tabs, their glass and the lozenge that slides between them are the
+            // system's own.
+            TabView(selection: Binding(get: { selection }, set: { choose($0) })) {
+                ForEach(effects, id: \.self) { effect in
+                    Tab(effect.title, systemImage: Self.symbol(effect), value: effect) { EmptyView() }
+                }
+            }
+            .tabViewStyle(.tabBarOnly)
+            // The tab bar doesn't say how wide it wants to be, so it's given the width its five tabs need:
+            // the panel then grows to hold it rather than squeezing the labels.
+            .frame(width: 392)
+        } else {
+            drawn
+        }
+    }
+
+    /// The tab bar drawn here, for where the system's doesn't come out: the app's own pictures.
+    private var drawn: some View {
         HStack(spacing: 0) {
             ForEach(effects, id: \.self) { effect in
                 let isSelected = effect == selection
@@ -599,20 +633,28 @@ private struct EffectTabs: View {
                         // The one that plays: a glass lozenge, lit at its top edge, sliding between tabs.
                         if isSelected {
                             Capsule(style: .continuous)
-                                .fill(isDark ? AnyShapeStyle(.white.opacity(0.16)) : AnyShapeStyle(.white.opacity(0.92)))
+                                .fill(isDark ? AnyShapeStyle(.white.opacity(0.14)) : AnyShapeStyle(.white.opacity(0.92)))
+                                // Glass has an edge: light gathered where it bends at the top, the shadow of
+                                // its thickness at the bottom, just inside the rim.
                                 .overlay {
                                     Capsule(style: .continuous)
-                                        .fill(LinearGradient(colors: [.white.opacity(isDark ? 0.10 : 0.55), .clear],
-                                                             startPoint: .top, endPoint: .center))
+                                        .strokeBorder(LinearGradient(stops: [
+                                            .init(color: .white.opacity(isDark ? 0.5 : 1), location: 0),
+                                            .init(color: .clear, location: 0.32),
+                                            .init(color: .clear, location: 0.68),
+                                            .init(color: .black.opacity(isDark ? 0.25 : 0.12), location: 1),
+                                        ], startPoint: .top, endPoint: .bottom), lineWidth: 1.5)
+                                        .padding(1)
+                                        .blur(radius: 0.5)
                                 }
                                 .overlay {
                                     Capsule(style: .continuous)
-                                        .strokeBorder(LinearGradient(colors: [.white.opacity(isDark ? 0.34 : 0.9),
-                                                                              .white.opacity(isDark ? 0.06 : 0.2)],
+                                        .strokeBorder(LinearGradient(colors: [.white.opacity(isDark ? 0.45 : 1),
+                                                                              .white.opacity(isDark ? 0.08 : 0.3)],
                                                                      startPoint: .top, endPoint: .bottom),
                                                       lineWidth: 1)
                                 }
-                                .shadow(color: .black.opacity(isDark ? 0.28 : 0.14), radius: 3, y: 1)
+                                .shadow(color: .black.opacity(isDark ? 0.3 : 0.16), radius: 3, y: 1)
                                 .matchedGeometryEffect(id: "selection", in: pill)
                         }
                     }
@@ -636,10 +678,21 @@ private struct EffectTabs: View {
                                                             startPoint: .top, endPoint: .bottom)))
                 .overlay {
                     Capsule(style: .continuous)
+                        .strokeBorder(LinearGradient(stops: [
+                            .init(color: .white.opacity(isDark ? 0.3 : 0.8), location: 0),
+                            .init(color: .clear, location: 0.3),
+                            .init(color: .clear, location: 0.7),
+                            .init(color: .black.opacity(isDark ? 0.18 : 0.07), location: 1),
+                        ], startPoint: .top, endPoint: .bottom), lineWidth: 1.5)
+                        .padding(1)
+                        .blur(radius: 0.5)
+                }
+                .overlay {
+                    Capsule(style: .continuous)
                         .strokeBorder(isDark
-                                      ? AnyShapeStyle(LinearGradient(colors: [.white.opacity(0.22), .white.opacity(0.03)],
+                                      ? AnyShapeStyle(LinearGradient(colors: [.white.opacity(0.28), .white.opacity(0.05)],
                                                                      startPoint: .top, endPoint: .bottom))
-                                      : AnyShapeStyle(Color.black.opacity(0.05)),
+                                      : AnyShapeStyle(Color.black.opacity(0.06)),
                                       lineWidth: 1)
                 }
         }
@@ -970,6 +1023,9 @@ enum PanelRenderer {
     }
 
     static func render(to folder: String) {
+        // Before any panel is built: the system's tab bar leaves a black mark in a picture, so the
+        // panels drawn here use the one drawn in SwiftUI.
+        PanelPictures.isDrawing = true
         let options = Options(ProcessInfo.processInfo.environment)
         func state(_ setting: LogoIllumination, isSupported: Bool = true, canControlDirectly: Bool = true,
                    canFollowSound: Bool = true, followsBattery: Bool = false, followsDisplayBrightness: Bool = false,
