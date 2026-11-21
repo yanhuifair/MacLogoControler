@@ -1,9 +1,9 @@
 <p align="center">
-  <img src="docs/banner.jpg" width="100%" alt="LogoLight: Control your glowing Apple logo. Turn it off, dim it, let it breathe or beat like a heart, or glow with your music. Right from the menu bar. Free, open source, for the MacBook Pro with PROLED XDR Display. Beside the text, LogoLight's live view shows a large lid with the Apple logo glowing, next to its menu with the LogoLight switch and Breathe switched on.">
+  <img src="docs/banner.jpg" width="100%" alt="Mac Logo Control: Control your glowing Apple logo. Turn it off, dim it, let it breathe or beat like a heart, or glow with your music. Right from the menu bar. Free, open source, for the MacBook Pro with PROLED XDR Display. Beside the text, Mac Logo Control's live view shows a large lid with the Apple logo glowing, next to its menu with the Mac Logo Control switch and Breathe switched on.">
 </p>
 
 <p align="center">
-  <a href="https://github.com/Ark0N/LogoLight/releases/latest/download/LogoLight-1.4.0.zip"><img src="docs/download-button.png" height="56" alt="Download LogoLight"></a>
+  <a href="https://github.com/Ark0N/MacLogoControl/releases/latest/download/MacLogoControl-1.5.0.zip"><img src="docs/download-button.png" height="56" alt="Download Mac Logo Control"></a>
   &nbsp;
   <a href="https://buymeacoffee.com/arkon"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" height="56" alt="Buy me a coffee"></a>
 </p>
@@ -18,6 +18,10 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-1f1f24?style=flat-square" alt="MIT license"></a>
 </p>
 
+The app was called LogoLight until 1.5.0: it installs over an old LogoLight and keeps your settings,
+logolight.app stays its home, and after updating you'll need to turn the Control Center switch and
+Launch at Login back on.
+
 ## Features
 
 <table>
@@ -25,11 +29,11 @@
     <td width="360" align="center" valign="middle">
       <picture>
         <source media="(prefers-color-scheme: dark)" srcset="docs/media/menu-breathe-dark.gif">
-        <img src="docs/media/menu-breathe-light.gif" width="320" alt="LogoLight's whole menu with the LogoLight switch on and Breathe switched on: the live view of the lid shows the Apple logo slowly glowing, fading out and glowing again, above the brightness slider, the Battery and Charging switches, the effect switches (Breathe, Pulse, Heartbeat and Sound) and Morse code. Under them, a General group with the Lid Closed and Launch at Login switches, then the menu's own items: Disable Password, checked, and Quit LogoLight.">
+        <img src="docs/media/menu-breathe-light.gif" width="320" alt="Mac Logo Control's whole menu with the Mac Logo Control switch on and Breathe switched on: the live view of the lid shows the Apple logo slowly glowing, fading out and glowing again, above the brightness slider, the Battery and Charging switches, the effect switches (Breathe, Pulse, Heartbeat and Sound) and Morse code. Under them, a General group with the Lid Closed and Launch at Login switches, then the menu's own items: Disable Password, checked, and Quit Mac Logo Control.">
       </picture>
     </td>
     <td valign="middle">
-      <b>LogoLight switch</b><br>
+      <b>The Mac Logo Control switch</b><br>
       At the top of the menu, or Option-click the menu bar icon. The logo fades out and back in smoothly, with no password.
       <br><br>
       <b>Live view</b><br>
@@ -51,13 +55,13 @@
       Type a message and press play to flash it. Turn on loop to repeat it until you stop it.
       <br><br>
       <b>Sound</b><br>
-      Turn on Sound and the logo glows with whatever your Mac is playing: brighter as it gets louder, dark between beats, peaking at your brightness. macOS asks once to let LogoLight hear it (macOS 14.2 or later); nothing is recorded.
+      Turn on Sound and the logo glows with whatever your Mac is playing: brighter as it gets louder, dark between beats, peaking at your brightness. macOS asks once to let Mac Logo Control hear it (macOS 14.2 or later); nothing is recorded.
       <br><br>
       <b>Lit with Lid Closed</b><br>
-      Close the lid and the logo stays lit, with its effects, while the keyboard stays dark: on power, where LogoLight keeps your Mac awake behind the closed lid, or with an external display. On battery with no display, the Mac sleeps as usual.
+      Close the lid and the logo stays lit, with its effects, while the keyboard stays dark: on power, where Mac Logo Control keeps your Mac awake behind the closed lid, or with an external display. On battery with no display, the Mac sleeps as usual.
       <br><br>
       <b>Control Center</b><br>
-      A LogoLight switch for Control Center or the menu bar (macOS 26 or later).
+      The Mac Logo Control switch for Control Center or the menu bar (macOS 26 or later).
       <br><br>
       <b>A password once, at most</b><br>
       Usually none at all. Where macOS asks, <a href="#fallback-the-documented-command">Disable Password</a> makes it the only time.
@@ -66,7 +70,7 @@
       Nothing to set up: it remembers your brightness and effect.
       <br><br>
       <b>Steps aside for Codeman</b><br>
-      <a href="https://getcodeman.com">Codeman</a>'s Mac app can show what your AI coding agents are doing on the logo. While it does, LogoLight pauses, and picks up where it left off when Codeman is done.
+      <a href="https://getcodeman.com">Codeman</a>'s Mac app can show what your AI coding agents are doing on the logo. While it does, Mac Logo Control pauses, and picks up where it left off when Codeman is done.
     </td>
   </tr>
 </table>
@@ -75,22 +79,22 @@
 
 <table>
   <tr>
-    <td align="center"><img src="docs/media/breathe.gif" width="330" alt="LogoLight's live view of the lid: the Apple logo slowly fades out and back in (Breathe)."><br><b>Breathe</b></td>
-    <td align="center"><img src="docs/media/pulse.gif" width="330" alt="LogoLight's live view of the lid: the Apple logo fades out and back in at a steady pace (Pulse)."><br><b>Pulse</b></td>
+    <td align="center"><img src="docs/media/breathe.gif" width="330" alt="Mac Logo Control's live view of the lid: the Apple logo slowly fades out and back in (Breathe)."><br><b>Breathe</b></td>
+    <td align="center"><img src="docs/media/pulse.gif" width="330" alt="Mac Logo Control's live view of the lid: the Apple logo fades out and back in at a steady pace (Pulse)."><br><b>Pulse</b></td>
   </tr>
   <tr>
-    <td align="center"><img src="docs/media/heartbeat.gif" width="330" alt="LogoLight's live view of the lid: the Apple logo beats twice, then rests (Heartbeat)."><br><b>Heartbeat</b></td>
-    <td align="center"><img src="docs/media/on-off.gif" width="330" alt="LogoLight's live view of the lid: the Apple logo fades out, stays dark, then fades back in (the LogoLight switch)."><br><b>On and off</b></td>
+    <td align="center"><img src="docs/media/heartbeat.gif" width="330" alt="Mac Logo Control's live view of the lid: the Apple logo beats twice, then rests (Heartbeat)."><br><b>Heartbeat</b></td>
+    <td align="center"><img src="docs/media/on-off.gif" width="330" alt="Mac Logo Control's live view of the lid: the Apple logo fades out, stays dark, then fades back in (the Mac Logo Control switch)."><br><b>On and off</b></td>
   </tr>
 </table>
 
-<sub>Drawn by LogoLight's own live view, with the effects' real timing (<code>swift scripts/make-media.swift</code> makes them again).</sub>
+<sub>Drawn by Mac Logo Control's own live view, with the effects' real timing (<code>swift scripts/make-media.swift</code> makes them again).</sub>
 
 ## Install
 
-1. **[Download LogoLight](https://github.com/Ark0N/LogoLight/releases/latest/download/LogoLight-1.4.0.zip)**.
+1. **[Download Mac Logo Control](https://github.com/Ark0N/MacLogoControl/releases/latest/download/MacLogoControl-1.5.0.zip)**.
    It's signed with a Developer ID and notarized by Apple.
-2. Unzip it, move **LogoLight** to your Applications folder and open it. It lives in the menu bar.
+2. Unzip it, move **Mac Logo Control** to your Applications folder and open it. It lives in the menu bar.
 
 Or with [Homebrew](https://brew.sh):
 
@@ -99,19 +103,19 @@ brew install --cask ark0n/tap/logolight
 ```
 
 Needs a MacBook Pro with PROLED XDR Display and macOS 14 or later (these Macs ship with macOS 27).
-On other Macs, LogoLight opens but says the logo isn't available.
+On other Macs, Mac Logo Control opens but says the logo isn't available.
 
 ### Add it to Control Center
 
 1. Click Control Center in the menu bar, then **Edit Controls** at the bottom.
-2. Search for **LogoLight**.
-3. Drag **LogoLight** into Control Center, or straight into the menu bar.
+2. Search for **Mac Logo Control**.
+3. Drag **Mac Logo Control** into Control Center, or straight into the menu bar.
 
 <p align="center">
-  <img src="docs/control-center.png" width="720" alt="Control Center with LogoLight's button at the top left. An arrow points to it: one tap turns the glowing logo on your lid on or off, shown as the lid lit and dark. A second arrow points to Edit Controls, with the steps to add it: open Control Center, click Edit Controls, search for LogoLight, drag LogoLight in.">
+  <img src="docs/control-center.png" width="720" alt="Control Center with Mac Logo Control's button at the top left. An arrow points to it: one tap turns the glowing logo on your lid on or off, shown as the lid lit and dark. A second arrow points to Edit Controls, with the steps to add it: open Control Center, click Edit Controls, search for Mac Logo Control, drag Mac Logo Control in.">
 </p>
 
-<sub>Apple only lets apps add switches and buttons to Control Center, so the brightness slider stays in LogoLight's own menu.</sub>
+<sub>Apple only lets apps add switches and buttons to Control Center, so the brightness slider stays in Mac Logo Control's own menu.</sub>
 
 ## How it works
 
@@ -142,31 +146,31 @@ CoreBrightness's `BrightnessSystemClient`, the interface Control Center uses for
 | `DisplayLogicalState` | `1` (Blank) fades the logo out and `2` (Unblank) fades it back in. The screen is unaffected, but the keyboard backlight follows it too (see below). |
 | `LEPWMState` | Live state, e.g. `Factor` (fade position), `FinalNits`, `Lux` (read only). |
 
-LogoLight uses these to switch the logo without a password and to fade it smoothly:
+Mac Logo Control uses these to switch the logo without a password and to fade it smoothly:
 turning off fades out over a second first, and turning on starts from dark and fades in
 (with an effect chosen, the effect's first rise is the fade in). The effects are loops of
 the same fades. They pause when the logo is off, the display sleeps, or the built-in display
 goes away (the lid closed, unless Lit with Lid Closed is on).
 
 The keyboard backlight also listens to `DisplayLogicalState`, so right after every Blank,
-LogoLight tells the keyboard alone that the display is still on, which keeps it lit. When the
+Mac Logo Control tells the keyboard alone that the display is still on, which keeps it lit. When the
 display really sleeps, the keyboard goes dark as usual.
 
-There's no key for the logo's brightness, so the slider stops a fade part way: LogoLight
+There's no key for the logo's brightness, so the slider stops a fade part way: Mac Logo Control
 watches `Factor`, and near the level it eases the logo on with a few short fades, so it slows
 to a stop instead of halting at speed. Then it starts a fade the other way that's so slow it
 never visibly moves. The level lasts until the next change. While the slider is dragged, the
-running fade follows it rather than starting again at every step. Quitting LogoLight returns
+running fade follows it rather than starting again at every step. Quitting Mac Logo Control returns
 the logo to normal brightness.
 
 `corebrightnessd` also dims the logo with the display: the logo's light is `AppliedNits ×
 Factor`, and `AppliedNits` is the display's nits mapped through `LEPWMBrightnessNitsMapping`,
-within limits set by the light around. While it runs, LogoLight writes a flat mapping, so
+within limits set by the light around. While it runs, Mac Logo Control writes a flat mapping, so
 `AppliedNits` is the most the light around allows at any display brightness, and the slider alone
 sets the logo's brightness (100% is as bright as macOS makes it with the display at full).
-`corebrightnessd` takes a mapping only when the display's brightness changes, so LogoLight then
-writes the display's brightness back as it is, which makes it take it at once. When LogoLight
-quits, it puts the display's own mapping back the same way.
+`corebrightnessd` takes a mapping only when the display's brightness changes, so Mac Logo Control
+then writes the display's brightness back as it is, which makes it take it at once. When Mac Logo
+Control quits, it puts the display's own mapping back the same way.
 
 The Sound effect hears what the Mac plays through a Core Audio process tap on every app's
 output (macOS 14.2 or later, with your permission under System Audio Recording Only), reduces
@@ -178,7 +182,7 @@ with one write and then left alone.
 
 This is private API, found by inspecting CoreBrightness (the details, measurements and
 the tools used are in [docs/corebrightnessd.md](docs/corebrightnessd.md) and
-[tools/probes](tools/probes)). LogoLight loads it dynamically and,
+[tools/probes](tools/probes)). Mac Logo Control loads it dynamically and,
 if it's missing or `corebrightnessd` doesn't take a change, falls back to running Apple's
 documented command as root (see below). Brightness and effects need direct control, and are
 hidden without it.
@@ -188,8 +192,8 @@ hidden without it.
 The control is a WidgetKit extension inside the app (`Controls/`). Extensions must be sandboxed,
 so it can't reach `corebrightnessd` itself, and only the app may change the logo anyway, since
 the app also holds the brightness and plays effects. The app serves a Mach port named after its
-bundle ID (`app.logolight.LogoLight.control`), and the extension is allowed to look up just that
-name. A tap asks the app to flip its switch, as Option-click does; if LogoLight isn't running, it's
+bundle ID (`app.logolight.MacLogoControl.control`), and the extension is allowed to look up just that
+name. A tap asks the app to flip its switch, as Option-click does; if Mac Logo Control isn't running, it's
 opened in the background first. The app reloads the control whenever its switch changes. (Apple
 only lets apps add switches and buttons to Control Center, so there's no brightness slider
 there.)
@@ -199,13 +203,14 @@ there.)
 Codeman's Mac app blinks the logo while its agents work, through the same fades, so the two apps
 would fight over every one. Right before it first moves the logo, Codeman's blinker writes its
 process ID to `~/Library/Application Support/Codeman/logo-fade`, and it removes the file once the
-logo is back to normal. LogoLight looks every second (`LoanWatcher`): while that file names a running
+logo is back to normal. Mac Logo Control looks every second (`LoanWatcher`): while that file names a running
 `codeman-desktop` process, it pauses its effect and writes nothing to the logo; a brightness or an
 effect chosen meanwhile is kept. Once the file has been gone for 1.5 s (Codeman puts the logo back
-for a moment between one blink and the next), LogoLight takes the logo back as it does after a wake.
+for a moment between one blink and the next), Mac Logo Control takes the logo back as it does after a wake.
 A Codeman that was killed leaves the file behind, but its process is gone, so that doesn't count.
-The `LogoLightStepsAsideForCodeman` key in the app's Info.plist is how Codeman knows this LogoLight
-steps aside: with an older LogoLight running, Codeman leaves the logo to it.
+The `LogoLightStepsAsideForCodeman` and `MacLogoControlStepsAsideForCodeman` keys in the app's
+Info.plist are how Codeman knows this app steps aside; it sets both, so a Codeman from before the
+rename still recognises it. With an older LogoLight running, Codeman leaves the logo to it.
 
 #### Reading the state
 
@@ -218,17 +223,17 @@ ioreg -r -n bklb-backlight@0 | grep -E '"(enabled|high-period|low-period)"'
 
 `high-period / (high-period + low-period)` is the LED's current output level. (The menu doesn't
 show it: the live view uses the fade level instead, which is on the slider's scale.) Without
-direct control, LogoLight reads the setting from `enabled` while the screen is on. It doesn't
+direct control, Mac Logo Control reads the setting from `enabled` while the screen is on. It doesn't
 rely on the `bklb-backlight-enabled` NVRAM variable, which `corebrightnessd` only reads at
 startup and which isn't updated as soon as the setting changes.
 
 #### Fallback: the documented command
 
-If direct control isn't available, LogoLight runs the documented command as root, which
+If direct control isn't available, Mac Logo Control runs the documented command as root, which
 needs your password in the standard macOS administrator dialog. You only enter it once: the
 first time, the dialog says it will also turn on **Disable Password** (a menu item that's only
 shown in this case, or if it's already on), and together with the change it installs this
-sudoers rule to `/etc/sudoers.d/logolight`:
+sudoers rule to `/etc/sudoers.d/maclogocontrol`:
 
 ```
 lee ALL = (root) NOPASSWD: /usr/bin/defaults write com.apple.CoreBrightness LEBacklightMode -int 0, /usr/bin/defaults delete com.apple.CoreBrightness LEBacklightMode
@@ -238,12 +243,14 @@ It allows only those two exact commands, for your user only. The rule is checked
 `visudo` before it's installed (owned by root, mode `0440`), so a bad rule can't break
 `sudo`. After that, the logo switches without a password. If the rule can't be installed, or
 `sudo` doesn't honor it, the dialog comes back as before, and stops offering the rule while
-LogoLight is running.
+Mac Logo Control is running.
 
-Uncheck **Disable Password** to remove the rule and be asked every time. LogoLight remembers
-that and doesn't install the rule again until you check the item again. (Deleting the file
-yourself, `sudo rm /etc/sudoers.d/logolight`, also removes it, but then the next password
-installs it again.)
+Uncheck **Disable Password** to remove the rule and be asked every time. Mac Logo Control remembers
+that and doesn't install the rule again until you check the item again. The rule moved to
+`/etc/sudoers.d/maclogocontrol` with the rename; one left over at `/etc/sudoers.d/logolight` still
+works, and unchecking removes that too. (Deleting the file yourself,
+`sudo rm /etc/sudoers.d/maclogocontrol`, also removes it, but then the next password installs it
+again.)
 
 </details>
 
@@ -255,7 +262,7 @@ Intents tools).
 
 ```sh
 make test      # run the tests
-make app       # build build/LogoLight.app
+make app       # build build/MacLogoControl.app
 make install   # copy it to /Applications and open it
 ```
 
@@ -265,7 +272,7 @@ No MacBook Pro with PROLED XDR Display? A debug build can simulate the logo, tou
 so the whole menu works and its live view shows what the logo would do (effects, brightness, Morse):
 
 ```sh
-swift build && LOGOLIGHT_SIMULATE=1 .build/debug/LogoLight
+swift build && MACLOGOCONTROL_SIMULATE=1 .build/debug/MacLogoControl
 ```
 
 The app is ad-hoc signed, with the hardened runtime. To sign it with your Developer ID,
@@ -278,7 +285,7 @@ SIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" NOTARY_PROFILE=logo
 
 Other overrides for `scripts/build-app.sh`: `VERSION`, `BUILD_NUMBER`, `BUNDLE_ID`.
 
-LogoLight can't go on the Mac App Store: it uses private API, and the App Store requires the
+Mac Logo Control can't go on the Mac App Store: it uses private API, and the App Store requires the
 App Sandbox, which rules out both direct control and the admin-command fallback.
 
 <details>
@@ -286,12 +293,12 @@ App Sandbox, which rules out both direct control and the admin-command fallback.
 
 | Path | What's there |
 | --- | --- |
-| `Sources/LogoLightCore` | `LogoController`; direct control, brightness and effects (`LightEmitter`, `LogoEffect`); reading the state (I/O Registry); the documented command, the admin dialog and the sudoers rule; what the menu shows (`PanelState`) |
-| `Sources/LogoLight` | The AppKit menu bar app, including the control panel (`ControlPanel.swift`) |
-| `Sources/LogoLightTests` | The test suite (`swift run LogoLightTests`) |
+| `Sources/MacLogoControlCore` | `LogoController`; direct control, brightness and effects (`LightEmitter`, `LogoEffect`); reading the state (I/O Registry); the documented command, the admin dialog and the sudoers rule; what the menu shows (`PanelState`) |
+| `Sources/MacLogoControl` | The AppKit menu bar app, including the control panel (`ControlPanel.swift`) |
+| `Sources/MacLogoControlTests` | The test suite (`swift run MacLogoControlTests`) |
 | `Controls` | The Control Center control, an extension built by `scripts/build-app.sh` |
 | `Resources/Info.plist` | App bundle metadata (template) |
-| `scripts/build-app.sh` | Builds and signs `LogoLight.app` |
+| `scripts/build-app.sh` | Builds and signs `MacLogoControl.app` |
 | `scripts/notarize.sh` | Notarizes, staples and zips a Developer ID build (`make dist`) |
 | `docs/corebrightnessd.md` | Research notes: the keys, the fade curve, holding a level |
 | `tools/probes` | The command-line tools used for that research |
@@ -311,7 +318,7 @@ this Mac's real logo state.
 
 1. If **Disable Password** is checked, uncheck it first (this removes the sudoers rule).
 2. Turn off **Launch at Login** if you turned it on.
-3. Quit LogoLight and delete it from Applications (`make uninstall`).
+3. Quit Mac Logo Control and delete it from Applications (`make uninstall`).
 
 The logo setting itself stays as you left it (an effect stops when the app quits). To turn
 the logo back on without the app:
@@ -319,7 +326,7 @@ the logo back on without the app:
 
 ## Support
 
-LogoLight is free. If you like it, a ⭐ on this repo helps other MacBook Pro owners find it.
+Mac Logo Control is free. If you like it, a ⭐ on this repo helps other MacBook Pro owners find it.
 And you can buy me a coffee:
 
 <a href="https://buymeacoffee.com/arkon"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" height="48" alt="Buy me a coffee"></a>
@@ -328,4 +335,4 @@ And you can buy me a coffee:
 
 MIT, see [LICENSE](LICENSE).
 
-<sub>LogoLight is not affiliated with or endorsed by Apple Inc. Apple, the Apple logo and MacBook Pro are trademarks of Apple Inc., registered in the U.S. and other countries.</sub>
+<sub>Mac Logo Control is not affiliated with or endorsed by Apple Inc. Apple, the Apple logo and MacBook Pro are trademarks of Apple Inc., registered in the U.S. and other countries.</sub>

@@ -1,6 +1,6 @@
 # How corebrightnessd drives the logo
 
-Research notes behind LogoLight's direct control, measured on a MacBook Pro with PROLED XDR
+Research notes behind Mac Logo Control's direct control, measured on a MacBook Pro with PROLED XDR
 Display running macOS 27 (Darwin 27.2), November 2026. All of it is private, undocumented
 behaviour and may change with any macOS update. The tools used are in
 [`tools/probes`](../tools/probes), and every table below can be re-checked with them.
@@ -17,8 +17,8 @@ unsandboxed app run by an admin user.
 - `-setProperty:(id)value forKey:(NSString *)key` returns `BOOL`. `YES` means the message was
   delivered, not that the change was applied.
 
-LogoLight calls both through typed IMPs (`@convention(c)`); see
-`Sources/LogoLightCore/LightEmitter.swift`.
+Mac Logo Control calls both through typed IMPs (`@convention(c)`); see
+`Sources/MacLogoControlCore/LightEmitter.swift`.
 
 The light emitter (LE) classes are `CBLEManager`, `CBLEPWMContainer`,
 `CBLEPWMControlModule`, `CBLEPWMAutoBrightnessModule`, `CBLEPWMNitsMultiplier`,
@@ -82,7 +82,7 @@ ChargerState = 1
   from the lux mappings, so the logo follows the screen brightness and ambient light.
 - `FinalNits = AppliedNits × Factor × NitsMultiplier` (202.77 × 0.4455 × 1.1 = 99.37).
 - `Factor` (0–1) is the fade position that `DisplayLogicalState` animates. It's the only
-  brightness input LogoLight sets directly; the mapping takes the display out of `AppliedNits`.
+  brightness input Mac Logo Control sets directly; the mapping takes the display out of `AppliedNits`.
 
 ### Brightness mappings
 
@@ -124,7 +124,7 @@ applied the flat mapping at once, with no change to the display. `AppliedNits` t
 the maximum, 413, over about 0.75 s (72, 219, 380, 410 at 0.1, 0.3, 0.5, 0.75 s); taken at a real
 display change (0.50 → 0.52) it read 150 and then 413 within 0.1 s. The original written back took
 effect by itself 2.3 s later, with the display's nits moving, so the rewrite wasn't tried that way.
-**LogoLight uses this**: see "Keeping the brightness off the display's".
+**Mac Logo Control uses this**: see "Keeping the brightness off the display's".
 
 ## The keyboard backlight
 
@@ -139,7 +139,7 @@ straight after each global Blank keeps the keyboard lit while the logo fades. Ov
 brightness changes, all three effects and off/on, the keyboard LED stayed on in all 154 samples,
 at 23–25% with one dip to 19% while the logo switched back on.
 
-The keyboard must still go dark with the display, so LogoLight only does this while the display
+The keyboard must still go dark with the display, so Mac Logo Control only does this while the display
 is awake, and sends the keyboards Blank when the display sleeps. A real sleep hasn't been measured
 yet, so it isn't known how that lines up with the daemon's own states.
 
@@ -198,8 +198,8 @@ target. It stayed flat over 3 s, moving up or down from a held level works, and 
 60 Hz slider drag ended exactly on target (that was before the fade started following the
 drag, which hasn't been checked on the MacBook yet). Effects peak at the level; Heartbeat's
 quickest beats overshoot a little (0.30 for a level of 0.265), because polling can't stop a
-very fast fade precisely. All of that was with the fade cut short at the level; LogoLight now
-eases onto it instead (next section), which hasn't been through `tools/livecheck` yet.
+very fast fade precisely. All of that was with the fade cut short at the level; Mac Logo Control
+now eases onto it instead (next section), which hasn't been through `tools/livecheck` yet.
 
 ## Easing onto a level
 
@@ -218,7 +218,7 @@ every ~6 ms (known keys only, ending with the normal-lighting restore):
   it to about 0.19, 4–6 of them in quick succession to 0.168–0.173, and about 70 (a 20 Hz glide
   over 1.2 s) to 0.129, which is visible.
 
-What LogoLight does now (`LightEmitter`), which is the hybrid that worked: the stretched fade
+What Mac Logo Control does now (`LightEmitter`), which is the hybrid that worked: the stretched fade
 carries the logo until it has covered 70% of the way to the level, measuring its speed `v`.
 Then it eases out, following `1 - (1 - u)²` over `L = 2·|r| / |v|` (kept between 0.15 and
 1.2 s), where `r` is the distance left, so the ease starts at the fade's speed. That's done in
@@ -240,7 +240,7 @@ time is up are skipped rather than started and replaced at once. The hold ends i
 - The effect-style rise with 6 segments stopped at 0.03 per second (11%) instead of 0.14 (89%),
   landed at 0.265 and took 0.5 s longer. The keyboard dipped to 0.182.
 
-In LogoLight, a move to 0 or 1 stays a plain fade. A level is eased onto only once its target
+In Mac Logo Control, a move to 0 or 1 stays a plain fade. A level is eased onto only once its target
 has stayed put for two polls, so a slider being dragged is followed as before, and a change
 while easing on stops it short for a new fade. The time a peak's fade overran (on the clock)
 is taken from the holds that follow, so an effect keeps its cycle length. In the tests' fake
@@ -250,10 +250,10 @@ Breathe, Pulse and Heartbeat keep their cycle within 0.1 s at brightness 0.5. He
 after its beats are too short to make up for easing on, so its rest is about 0.26 s shorter.
 
 Not tested yet: what `corebrightnessd` does with a held level when the display **really**
-sleeps and wakes, since its own Blank/Unblank could use the huge duration. LogoLight resets the
-duration when the display sleeps and reapplies the level after it wakes; those two handlers
-were only exercised by calling them directly. If LogoLight crashes while holding a level, the
-huge duration stays in the daemon until LogoLight is reopened, which replaces it: with the
+sleeps and wakes, since its own Blank/Unblank could use the huge duration. Mac Logo Control resets
+the duration when the display sleeps and reapplies the level after it wakes; those two handlers
+were only exercised by calling them directly. If Mac Logo Control crashes while holding a level, the
+huge duration stays in the daemon until Mac Logo Control is reopened, which replaces it: with the
 automatic duration, or with a new hold at the saved level.
 
 ## Keeping the brightness off the display's
@@ -264,8 +264,8 @@ display's nits mapped through `LEPWMBrightnessNitsMapping`, kept between the lux
 "`LEPWMState`"). So before 1.4.0, turning the display down dimmed a logo held at 50% too (issue #9,
 "Allow logo brightness to be adjusted independently from display brightness").
 
-**What LogoLight does (1.4.0):** at launch it writes a flat `LEPWMBrightnessNitsMapping`,
-`[[0,1000],[3.4e38,1000]]`, which makes `AppliedNits` the most the ambient light allows
+**What Mac Logo Control (then LogoLight) does in 1.4.0:** at launch it writes a flat
+`LEPWMBrightnessNitsMapping`, `[[0,1000],[3.4e38,1000]]`, which makes `AppliedNits` the most the ambient light allows
 (`MaxNitsRestriction`) at any display brightness (measured: "Brightness mappings"). A brightness's
 level then gives the same light whatever the display does, and still follows the ambient light
 through that maximum; 100% is as bright as macOS makes the logo with the display at full (the
@@ -337,7 +337,7 @@ is for the System Audio Recording Only permission macOS asks for.
 
 Measured on 2026-11-08 with an external display attached and the lid closed, with
 `tools/probes/clamshell` and then `tools/livecheck --lid`, and read from the disassembly. This is
-how LogoLight's Lit with Lid Closed works.
+how Mac Logo Control's Lit with Lid Closed works.
 
 - When the lid closes, `BLControl` (on an `IOPMrootDomain` interest notification, which carries
   `AppleClamshellState`) sends `ClamshellUpdate = 1` to every display container, the keyboards,
@@ -365,7 +365,7 @@ how LogoLight's Lit with Lid Closed works.
   lid closed, and a client's `ClamshellUpdate = 1` was ignored the same way. A hold heading for
   dark isn't a change of target, and one heading for lit gets a new fade at the hold's endless
   duration. So before Lit with Lid Closed, a logo below full brightness stayed lit on a closed lid.
-  To darken it, LogoLight tells it the lid is open, hands it back to normal (the automatic
+  To darken it, Mac Logo Control tells it the lid is open, hands it back to normal (the automatic
   duration, then Unblank), and tells it the lid is closed again. A display sleep (DidSleep also
   only sets the target to 0) may leave a held level lit in the same way; that hasn't been checked.
 - A rise from a factor of exactly 0 waits for the display-ready gate (`CBLEPWMDisplayReadyGate`:
@@ -411,12 +411,13 @@ how LogoLight's Lit with Lid Closed works.
   online meanwhile and `CGDisplayIsAsleep` says 0, so the lid itself has to be asked
   (`AppleClamshellState` on `IOPMrootDomain`, and its `kIOPMMessageClamshellStateChange` interest
   notification). The `PreventSystemSleep` assertion alone isn't enough: with only that, the Mac
-  entered a dark wake when the lid closed and the logo stayed dark. LogoLight holds all three, and
+  entered a dark wake when the lid closed and the logo stayed dark. Mac Logo Control holds all three, and
   a guard process turns lid sleep back on when the app exits, since the kernel keeps the setting.
 - **A client's `DisplayPowerStateEvent = 4` (DidSleep) darkens the logo until a DidWake.** The
   probe wrote it at its end, and the logo stayed dark with the lid open (`Factor` 0, with
   `DisplayLogicalState` 2, `CBClamshellState` 0 and `ClamshellUpdate = 0` written again) until
-  `DisplayPowerStateEvent = 2` was written, which lit it within 3 s. LogoLight never writes this key.
+  `DisplayPowerStateEvent = 2` was written, which lit it within 3 s. Mac Logo Control never writes
+  this key.
 
 ## Reading the LED without corebrightnessd
 
