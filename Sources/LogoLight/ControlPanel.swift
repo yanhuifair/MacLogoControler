@@ -69,6 +69,7 @@ final class ControlPanel: NSView {
         model.onMorseLoopsChanged = { [weak self] in self?.onMorseLoopsChanged?($0) }
         model.onMorseTextChanged = { [weak self] in self?.onMorseTextChanged?($0) }
         model.onFinishChanged = { [weak self] in self?.onPreviewFinishChanged?($0) }
+        model.onBrightnessDragEnded = { [weak self] in self?.brightnessDragEnded() }
     }
 
     @available(*, unavailable)
@@ -92,10 +93,35 @@ final class ControlPanel: NSView {
 
     func update(_ state: PanelState) {
         guard state != model.state else { return }
+        // The app refreshes the panel every second while the menu's open. Laying the panel out under a
+        // slider that's still tracking drops the drag (the thumb stops under the pointer), so hold the
+        // newest state back while one is dragged and apply it when the slider lets go.
+        if model.isDraggingBrightness { heldState = state; return }
+        applyState(state)
+    }
+
+    /// The newest state that arrived mid-drag, applied when the slider lets go.
+    private var heldState: PanelState?
+
+    private func applyState(_ state: PanelState) {
         model.apply(state)
         // SwiftUI lays the new rows out on its next turn, and the menu item is as tall as the panel, so
         // it's sized once they're in.
         DispatchQueue.main.async { [weak self] in self?.sizeToFitContent() }
+    }
+
+    /// The slider let go: apply whatever the app said meanwhile.
+    private func brightnessDragEnded() {
+        guard let heldState else { return }
+        self.heldState = nil
+        applyState(heldState)
+    }
+
+    /// The menu closed with a drag still unreported (tracking ended without the slider saying so): end
+    /// the drag, so the panel stops holding updates back.
+    func cancelBrightnessDrag() {
+        guard model.isDraggingBrightness else { return }
+        model.dragBrightness(false)
     }
 
     /// Puts back the message typed last time.
@@ -203,8 +229,10 @@ private final class PanelModel {
     var onMorseLoopsChanged: ((Bool) -> Void)?
     var onMorseTextChanged: ((String) -> Void)?
     var onFinishChanged: ((MacFinish) -> Void)?
+    /// The brightness slider let go (or its drag was cancelled), so held-back state can go in.
+    var onBrightnessDragEnded: (() -> Void)?
 
-    private var isDraggingBrightness = false
+    private(set) var isDraggingBrightness = false
 
     init(finish: MacFinish) {
         self.finish = finish
@@ -257,6 +285,7 @@ private final class PanelModel {
 
     func dragBrightness(_ editing: Bool) {
         isDraggingBrightness = editing
+        if !editing { onBrightnessDragEnded?() }
     }
 
     func flipDisplayBrightness(_ on: Bool) {

@@ -235,6 +235,9 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     }
 
     func menuDidClose(_ menu: NSMenu) {
+        // A brightness drag that closed the menu never reported its end; end it here, so the panel
+        // applies the state it held back.
+        panel.cancelBrightnessDrag()
         scheduleRefresh(every: 10)
         // The link keeps its target alive until it's invalidated.
         glowLink?.invalidate()
