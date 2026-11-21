@@ -30,9 +30,12 @@ new name; old release notes still say LogoLight where they describe what shipped
   `LogoLightStepsAsideForCodeman` and `MacLogoControlStepsAsideForCodeman`. Codeman still looks the
   app up under the old name and ID: its side (`packages/desktop/src/logo.rs` in Ark0N/Codeman) has
   to learn `MacLogoControl` before the handover works again.
-- **Left to do**: the GitHub repo is renamed to `Ark0N/MacLogoControl` (GitHub redirects clones); the
-  Homebrew tap still ships `ark0n/tap/logolight` and needs a `maclogocontrol` cask (the old one kept
-  as an alias or deprecated); every picture — banner, menu GIFs, the site's menu shots,
+- **Left to do**: the code now lives in `yanhuifair/MacLogoControler`, but the release machinery is
+  still under `Ark0N`, which this MacBook can only read: the Homebrew tap ships `ark0n/tap/logolight`
+  and needs a `maclogocontrol` cask pointed at the new repo's releases (the old token kept as a
+  deprecated alias) and its workflow repointed, all of which needs the `Ark0N` account or a fork of
+  the tap; and 1.5.0 has to be released in the new repo, because its `releases/latest/download/…`
+  links (README, site) have nothing behind them until then. Every picture — banner, menu GIFs, the site's menu shots,
   `control-center.png`, `og-*.jpg`, the app icon if it carries the word — shows the old name until
   drawn again (`scripts/make-banner.swift`, `scripts/make-media.swift`, `MACLOGOCONTROL_RENDER_PANEL`).
   The banner draws its word at a fixed `x: left + 160` in 66 pt semibold, and "Mac Logo Control" is
@@ -143,8 +146,14 @@ the output back (first done 2026-11-20). So:
 
 ## Git
 
-- Remote: `https://github.com/Ark0N/MacLogoControl` (**public** since 2026-11-07, MIT; renamed from
-  `Ark0N/LogoLight` on 2026-11-22, which GitHub redirects, so old clones and the cask keep working).
+- Remote: `https://github.com/yanhuifair/MacLogoControler` (public, the app's home since 2026-11-22,
+  chosen by the user when the code was renamed; its first commit, before this history was pushed
+  over it, was a GPL-3.0 `LICENSE`, which is now the project's license too). `origin`'s URL was
+  changed to it; the old `https://github.com/Ark0N/LogoLight` is still remote `logolight` and is
+  **read-only from this MacBook** — `gh` here is logged in as `yanhuifair`, who has `READ` on
+  `Ark0N/*`, so `Ark0N/LogoLight` was never renamed and nothing under `Ark0N` can be pushed from
+  here (the tap and Codeman changes need the `Ark0N` account). The README and the site link the new
+  repo; the old one keeps the 1.4.0 and earlier releases, which is what the cask still installs.
   The local checkout is still `~/Documents/GitHub/LogoLight`. Work on `main`
   unless asked otherwise, commit in small logical steps, and push when a piece of work is done.
   Releases are tagged (`v1.0.0` is commit 76c389a, build 105; `v1.1.0` is 8b7d3b4, build 134; `v1.1.1` is e41948d, build 138) and published as GitHub Releases
@@ -261,10 +270,12 @@ the output back (first done 2026-11-20). So:
   more notable repo (far more stars when self-submitted); worth trying once LogoLight has them.
   The cask's `zap` removes the sudoers rule (it's not in `uninstall`, whose `delete` runs `sudo`
   even when there's nothing to delete). **After the rename the tap still says `logolight`**: it needs
-  a `maclogocontrol` cask (new token, pointing at `Ark0N/MacLogoControl`'s releases, with `zap`
+  a `maclogocontrol` cask (new token, pointing at `yanhuifair/MacLogoControler`'s releases, with `zap`
   deleting both `/etc/sudoers.d/maclogocontrol` and the old `logolight` one) and the old token kept
   as a deprecated alias, plus its workflow pointed at the new repo — none of that is done yet, so the
-  README and the site still give `brew install --cask ark0n/tap/logolight`.
+  README and the site still give `brew install --cask ark0n/tap/logolight`. Changing any of it needs
+  write access to `Ark0N`, which `gh` here doesn't have (logged in as `yanhuifair`, `READ` on
+  `Ark0N/*`).
 - **Promotion on GitHub** (2026-11-11): the repo has 20 topics (GitHub's limit). Listed under the old
   name: LogoLight is in
   jaywcjlove/awesome-mac (Menu Bar Tools, PR #4349); serhii-londar/open-source-mac-os-apps PR
@@ -298,7 +309,10 @@ the output back (first done 2026-11-20). So:
   1.4.0's settings are copied over on first launch by `LegacyName.moveSettings()`. Changing it again
   is the same cost as it was then: Launch at Login and a placed Control Center control can't be
   carried over, only the preferences can, and the user chose that once, not as a standing option.
-- **License**: MIT (chosen 2026-11-07); the repo went public with the 1.0.0 release. The website is
+- **License**: GPL-3.0 (chosen 2026-11-22, with the rename, by the user, who set it that way when
+  they made the new repo). MIT from 2026-11-07, and that grant can't be taken back from the
+  1.0.0–1.4.0 releases or from the MIT-licensed parts contributed by PRs — the README says so.
+  The website is
   in `site/` (Cloudflare Workers static assets, `logolight.app`). Donations go to
   buymeacoffee.com/arkon and never state an amount (the user's rule). On the site, the Apple
   logo appears only inside the app's own renders (the user's choice, given Apple's trademark
