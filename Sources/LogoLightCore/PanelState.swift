@@ -25,6 +25,10 @@ public struct PanelState: Equatable, Sendable {
     public var followsDisplayBrightness: Bool
     /// Whether the logo breathes while the battery charges (the Charging switch).
     public var breathesWhileCharging: Bool
+    /// Whether the logo stays lit with the lid closed (the Lid Closed switch), and whether that switch
+    /// is shown: it needs corebrightnessd, which the app only has with direct control.
+    public var lightsWithLidClosed: Bool
+    public var showsLidClosedOption: Bool
     /// The Morse message being sent, if any.
     public var morse: MorseMessage?
     /// Whether Morse code repeats until it's stopped (the loop switch).
@@ -40,7 +44,8 @@ public struct PanelState: Equatable, Sendable {
     /// straight away, so the rest of the panel follows the switch at once instead of when the fade ends.
     public init(status: LogoStatus, requested: LogoIllumination? = nil, canControlDirectly: Bool,
                 canFollowSound: Bool = true, effect: LogoEffect, brightness: Double, followsBattery: Bool = false,
-                followsDisplayBrightness: Bool = false, breathesWhileCharging: Bool = false, isBusy: Bool = false,
+                followsDisplayBrightness: Bool = false, breathesWhileCharging: Bool = false,
+                lightsWithLidClosed: Bool = false, showsLidClosedOption: Bool = true, isBusy: Bool = false,
                 morse: MorseMessage? = nil, morseLoops: Bool = false) {
         let setting = requested ?? status.setting
         isSupported = status.isSupported
@@ -53,6 +58,8 @@ public struct PanelState: Equatable, Sendable {
         self.followsBattery = followsBattery
         self.followsDisplayBrightness = followsDisplayBrightness
         self.breathesWhileCharging = breathesWhileCharging
+        self.lightsWithLidClosed = lightsWithLidClosed
+        self.showsLidClosedOption = showsLidClosedOption && showsAdjustments
         self.morse = canControlDirectly ? morse : nil
         self.morseLoops = morseLoops
         message = status.isSupported ? nil : "Needs a MacBook Pro with PROLED XDR Display"

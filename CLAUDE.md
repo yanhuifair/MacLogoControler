@@ -426,9 +426,11 @@ MacBook, the user saw it breathe slowly with a real charger (a debug build of th
 plug-in wait), late as above. `tools/livecheck --charging` (a stand-in for charging) passed there on 2026-11-10, before 1.3.0
 (see the release's note above). **Not yet seen:** the plug-in wait with a real charger.
 
-**Lit with Lid Closed** (2026-11-08, asked for on Reddit): a menu item, off by default and saved as
-`LightsWithLidClosed`, with a second line, "External display only" (`NSMenuItem.subtitle`, macOS
-14.4+; 163 points at most, and `NSMenu` measured the menu still 170 wide). The user closed the lid
+**Lit with Lid Closed** (2026-11-08, asked for on Reddit): off by default and saved as
+`LightsWithLidClosed`. It was a menu item with a second line, "External display only"
+(`NSMenuItem.subtitle`, macOS 14.4+; 163 points at most, and `NSMenu` measured the menu still 170
+wide); since the panel's rows became switches with tooltips (2026-11-21) it's the Lid Closed row,
+last in the brightness card, and the line is its tooltip. The user closed the lid
 without an external display, where the Mac sleeps and the logo goes dark with it, and took that
 for the option not working; it was out of the menu (1.1.0 shipped without it) until the user asked
 for it back, explained in short words that don't widen the menu. With the lid closed and an external display, the logo is told the lid is

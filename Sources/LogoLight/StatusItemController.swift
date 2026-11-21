@@ -15,7 +15,6 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     private let panel = ControlPanel(finish: StatusItemController.previewFinish)
     private let panelItem = NSMenuItem()
     private let passwordlessItem = NSMenuItem()
-    private let lidClosedItem = NSMenuItem()
     private var lidObserver: LidObserver?
     private let sleepBlocker = LidSleepBlocker()
     private static let log = Logger(subsystem: Bundle.main.bundleIdentifier ?? "LogoLight", category: "lid")
@@ -165,6 +164,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         panel.onBrightnessChanged = { [weak self] in self?.setBrightness($0) }
         panel.onFollowsBatteryChanged = { [weak self] in self?.setFollowsBattery($0) }
         panel.onFollowsDisplayBrightnessChanged = { [weak self] in self?.setFollowsDisplayBrightness($0) }
+        panel.onLightsWithLidClosedChanged = { [weak self] in self?.setLightsWithLidClosed($0) }
         panel.onBreathesWhileChargingChanged = { [weak self] in self?.setBreathesWhileCharging($0) }
         panel.onEffectChosen = { [weak self] in self?.chooseEffect($0) }
         panel.onMorsePlay = { [weak self] in self?.playMorse($0) }
@@ -187,16 +187,6 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         passwordlessItem.action = #selector(togglePasswordless)
         passwordlessItem.toolTip = "Turn the logo on and off without entering your password. Uncheck to ask for it again."
 
-        // The widest item: `NSMenu` measures the menu 160 points wide with it, inside the panel's 170.
-        // The second line says what it needs: the Mac on power (the app then keeps it awake when the
-        // lid closes) or an external display. Otherwise closing the lid sleeps the Mac, and the logo
-        // goes dark with it, which looked as if the option didn't work.
-        lidClosedItem.title = "Lit with Lid Closed"
-        if #available(macOS 14.4, *) { lidClosedItem.subtitle = "On power or a display" }
-        lidClosedItem.target = self
-        lidClosedItem.action = #selector(toggleLightsWithLidClosed)
-        lidClosedItem.toolTip = "Keep the logo lit when you close the lid, on power or with an external display. On power, your Mac stays awake with the lid closed. The keyboard stays dark."
-
         launchAtLoginItem.title = "Launch at Login"
         launchAtLoginItem.target = self
         launchAtLoginItem.action = #selector(toggleLaunchAtLogin)
@@ -207,7 +197,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         menu.items = [
             panelItem,
             .separator(),
-            passwordlessItem, lidClosedItem, launchAtLoginItem,
+            passwordlessItem, launchAtLoginItem,
             .separator(),
             quitItem,
         ]
@@ -320,7 +310,9 @@ final class StatusItemController: NSObject, NSMenuDelegate {
                    canFollowSound: controller.canFollowSound, effect: controller.effect, brightness: controller.brightness,
                    followsBattery: controller.followsBattery,
                    followsDisplayBrightness: controller.followsDisplayBrightness,
-                   breathesWhileCharging: controller.breathesWhileCharging, isBusy: isBusy, morse: controller.morse,
+                   breathesWhileCharging: controller.breathesWhileCharging,
+                   lightsWithLidClosed: controller.lightsWithLidClosed,
+                   showsLidClosedOption: controller.canLightWithLidClosed, isBusy: isBusy, morse: controller.morse,
                    morseLoops: morseLoops)
     }
 
@@ -335,9 +327,6 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         passwordlessItem.isHidden = controller.canControlDirectly && !isPasswordlessEnabled
         passwordlessItem.state = isPasswordlessEnabled ? .on : .off
         passwordlessItem.isEnabled = status.isSupported && !isBusy
-        // Only with direct control: the logo is told about the lid through corebrightnessd.
-        lidClosedItem.isHidden = !status.isSupported || !controller.canLightWithLidClosed
-        lidClosedItem.state = controller.lightsWithLidClosed ? .on : .off
         updateSleepBlocker()
         launchAtLoginItem.state = isLaunchAtLoginEnabled ? .on : .off
         updateControl(state)
@@ -649,8 +638,9 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         }
     }
 
-    @objc private func toggleLightsWithLidClosed() {
-        let lights = !controller.lightsWithLidClosed
+    /// The panel's Lid Closed switch: the logo stays lit when the lid closes, on power or with an
+    /// external display, and on power the Mac is kept awake for it.
+    private func setLightsWithLidClosed(_ lights: Bool) {
         controller.setLightsWithLidClosed(lights)
         UserDefaults.standard.set(lights, forKey: Self.lightsWithLidClosedDefaultsKey)
         updateMenu()
