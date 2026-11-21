@@ -131,6 +131,17 @@ func panelStateTests(_ t: TestHarness) {
         t.expectEqual(state.brightness, 0.8) // what the slider shows, greyed out
     }
 
+    t.test("the lid's switch goes with the adjustments, the login one stands on its own") {
+        let adjusting = PanelState(status: status(.on), canControlDirectly: true, effect: .none, brightness: 0.6)
+        t.expect(adjusting.showsLidClosedOption, "offered where it can work")
+        t.expect(!adjusting.launchesAtLogin, "off until the app says otherwise")
+
+        let fallback = PanelState(status: status(.on), canControlDirectly: false, effect: .none, brightness: 0.6,
+                                  launchesAtLogin: true)
+        t.expect(!fallback.showsLidClosedOption, "it needs direct control")
+        t.expectEqual(fallback.launchesAtLogin, true) // the app's own setting is still shown
+    }
+
     t.test("there's no text in the panel on a Mac with the logo") {
         for setting in [LogoIllumination.on, .off, nil] {
             for direct in [true, false] {

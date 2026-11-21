@@ -126,6 +126,10 @@ private enum PanelMetrics {
     /// The least width the panel takes: enough for the menu's own items, and for the rows when the
     /// effects are hidden. It's as wide as its content wants, otherwise.
     static let minWidth: CGFloat = 172
+    /// The live view's width — the lid's — and the least the panel takes with it in: that width and the
+    /// margins either side, whatever the tabs and rows come to.
+    static let liveViewWidth: CGFloat = 392
+    static let widthWithLiveView: CGFloat = liveViewWidth + 2 * inset + 2 * iconInset
     /// Around the panel's contents (9 at the top, 6 at the bottom), and between its groups.
     static let inset: CGFloat = 6
     static let topInset: CGFloat = 9
@@ -145,6 +149,8 @@ private enum PanelMetrics {
     /// The corners of the cards: rounder than before, as macOS 26 and later draw them. The tabs sit in
     /// one too, and their lozenge is inset by the bar's padding, so it's that much tighter.
     static let cardRadius: CGFloat = 13
+    /// The panel's own corners, behind everything in it.
+    static let panelRadius: CGFloat = 12
     static let tabInset: CGFloat = 3
     static let tabRadius: CGFloat = cardRadius - tabInset
     /// Between one group and the next group's header, and between a header and its card.
@@ -260,8 +266,9 @@ private final class PanelModel {
         onFollowsBatteryChanged?(on)
     }
 
+    /// Not flipped here as the logo's switch is: starting at login can fail (a login item that won't be
+    /// added), and the panel is told what actually happened as the state comes back round.
     func flipLaunchAtLogin(_ on: Bool) {
-        launchesAtLogin = on
         onLaunchAtLoginChanged?(on)
     }
 
@@ -323,6 +330,8 @@ private struct PanelContent: View {
     let model: PanelModel
     let preview: LogoPreview
 
+    @Environment(\.colorScheme) private var colorScheme
+
     private var state: PanelState { model.state }
     private var greyed: Double { PanelMetrics.greyedAlpha }
     private var greying: Animation { .easeInOut(duration: PanelMetrics.greying) }
@@ -370,25 +379,29 @@ private struct PanelContent: View {
                     morseCard
                 }
                 .padding(.top, PanelMetrics.headerSpacing)
+            }
 
+            // The app's own settings, which hold whatever the logo is doing: on a Mac without the
+            // illuminated logo there's nothing to launch the app for, and they're left out.
+            if state.isSupported {
                 VStack(spacing: PanelMetrics.headerToCard) {
                     GroupHeader("General")
-                    PanelCard {
-                        if state.showsLidClosedOption {
-                            PanelRow(title: "Lid Closed", icon: .init(symbol: "laptopcomputer"),
-                                     isGreyed: !state.canAdjust,
-                                     help: "Keep the logo lit when you close the lid, on power or with an "
-                                         + "external display. On power, your Mac stays awake with the lid closed. "
-                                         + "The keyboard stays dark.") {
-                                Toggle("Lit with lid closed", isOn: Binding(get: { model.lightsWithLidClosed },
-                                                                           set: { model.flipLightsWithLidClosed($0) }))
-                                    .labelsHidden()
-                                    .toggleStyle(.switch)
-                                    .controlSize(.small)
-                            }
-
-                            RowSeparator()
+                PanelCard {
+                    if state.showsLidClosedOption {
+                        PanelRow(title: "Lid Closed", icon: .init(symbol: "laptopcomputer"),
+                                 isGreyed: !state.canAdjust,
+                                 help: "Keep the logo lit when you close the lid, on power or with an "
+                                     + "external display. On power, your Mac stays awake with the lid closed. "
+                                     + "The keyboard stays dark.") {
+                            Toggle("Lit with lid closed", isOn: Binding(get: { model.lightsWithLidClosed },
+                                                                       set: { model.flipLightsWithLidClosed($0) }))
+                                .labelsHidden()
+                                .toggleStyle(.switch)
+                                .controlSize(.small)
                         }
+
+                        RowSeparator()
+                    }
 
                         PanelRow(title: "Launch at Login", icon: .init(symbol: "power"),
                                  help: "Start LogoLight with your Mac, so the logo comes on by itself after a restart.") {
@@ -410,7 +423,9 @@ private struct PanelContent: View {
                     .font(.system(size: NSFont.smallSystemFontSize))
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
-                    .frame(width: PanelMetrics.minWidth - 2 * PanelMetrics.inset - 2 * PanelMetrics.textIndent,
+                    .frame(maxWidth: state.isSupported
+                           ? .infinity
+                           : PanelMetrics.minWidth - 2 * PanelMetrics.inset - 2 * PanelMetrics.textIndent,
                            alignment: .leading)
                     .padding(.horizontal, PanelMetrics.textIndent)
             }
@@ -418,7 +433,14 @@ private struct PanelContent: View {
         .padding(.top, PanelMetrics.topInset)
         .padding(.bottom, PanelMetrics.inset)
         .padding(.horizontal, PanelMetrics.inset)
-        .frame(minWidth: PanelMetrics.minWidth, alignment: .top)
+        .frame(minWidth: state.isSupported ? PanelMetrics.widthWithLiveView : PanelMetrics.minWidth,
+               alignment: .top)
+        // A surface of its own: a menu's material takes its brightness from what's behind it, and over a
+        // bright desktop white text and pale cards would wash out against it.
+        .background {
+            RoundedRectangle(cornerRadius: PanelMetrics.panelRadius, style: .continuous)
+                .fill(Color(nsColor: .windowBackgroundColor).opacity(colorScheme == .dark ? 0.55 : 0.62))
+        }
     }
 
     // MARK: - The brightness, the battery and the charging light
@@ -548,6 +570,10 @@ private struct PanelContent: View {
             .padding(.horizontal, PanelMetrics.iconInset)
             .frame(height: PanelMetrics.rowHeight)
             .disabled(!state.canAdjust)
+            // A disabled field only greys a little of itself: faded, as the rows around it are, it reads
+            // as out of reach at a glance.
+            .opacity(state.canAdjust ? 1 : 0.55)
+            .animation(greying, value: state.canAdjust)
 
             RowSeparator()
 
@@ -777,7 +803,7 @@ private final class LogoPreview: NSView {
     /// whatever height it's given.
     static let aspectRatio: CGFloat = 31.3 / 22.1
     /// How the panel draws the live view: as wide as a card's inside, the lid's shape giving the height.
-    static let width: CGFloat = 392
+    static let width: CGFloat = PanelMetrics.liveViewWidth
     static var height: CGFloat { (width / aspectRatio).rounded() }
     private let lid = CAGradientLayer()
     /// The logo as it looks unlit: polished metal in the lid, catching the light along a diagonal.
