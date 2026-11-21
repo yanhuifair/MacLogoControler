@@ -12,7 +12,7 @@
 //
 //   ./lidawake [logfile]     # asks aloud for the lid to be closed, runs about a minute, says when done
 //
-// Quit LogoLight first. It puts the lid state and lid sleep back at the end.
+// Quit Mac Logo Control first. It puts the lid state and lid sleep back at the end.
 import CoreGraphics
 import Foundation
 import IOKit
@@ -206,7 +206,7 @@ say("now: " + describe(sample()) + "  " + builtInState())
 var ids: [IOPMAssertionID] = []
 for type in ["PreventSystemSleep", "PreventUserIdleSystemSleep"] {
     var id: IOPMAssertionID = 0
-    let r = IOPMAssertionCreateWithName(type as CFString, IOPMAssertionLevel(kIOPMAssertionLevelOn), "LogoLight lid probe" as CFString, &id)
+    let r = IOPMAssertionCreateWithName(type as CFString, IOPMAssertionLevel(kIOPMAssertionLevelOn), "Mac Logo Control lid probe" as CFString, &id)
     say("assertion \(type): \(r)"); ids.append(id)
 }
 say("clamshell sleep disabled: kr=\(setClamshellSleepDisabled(true))")

@@ -1,11 +1,12 @@
-APP := build/LogoLight.app
+APP := build/MacLogoControl.app
 INSTALL_DIR ?= /Applications
 
-# Quits a running LogoLight (yours only) and waits up to 2 s for it to exit. It quits cleanly, returning
-# the logo to normal first, and `open` would otherwise find the old one still running. One that's still
-# running after that is blocked (e.g. showing the password dialog) and would only quit once that's
-# answered, so it's killed, rather than letting the new build start beside it.
-QUIT_APP = pkill -x -U "$$(id -u)" LogoLight; for i in $$(seq 20); do pgrep -x -U "$$(id -u)" LogoLight > /dev/null || break; sleep 0.1; done; if pgrep -x -U "$$(id -u)" LogoLight > /dev/null; then echo 'LogoLight did not quit (waiting for a password?); killing it'; pkill -KILL -x -U "$$(id -u)" LogoLight; sleep 0.2; fi; true
+# Quits a running Mac Logo Control (yours only) and waits up to 2 s for it to exit. It quits cleanly,
+# returning the logo to normal first, and `open` would otherwise find the old one still running. One
+# that's still running after that is blocked (e.g. showing the password dialog) and would only quit
+# once that's answered, so it's killed, rather than letting the new build start beside it. A `LogoLight`
+# is the app under its old name: it writes to the same logo, so it must go too.
+QUIT_APP = pkill -x -U "$$(id -u)" "MacLogoControl|LogoLight"; for i in $$(seq 20); do pgrep -x -U "$$(id -u)" "MacLogoControl|LogoLight" > /dev/null || break; sleep 0.1; done; if pgrep -x -U "$$(id -u)" "MacLogoControl|LogoLight" > /dev/null; then echo 'Mac Logo Control did not quit (waiting for a password?); killing it'; pkill -KILL -x -U "$$(id -u)" "MacLogoControl|LogoLight"; sleep 0.2; fi; true
 
 .PHONY: build test app dist run install uninstall clean
 
@@ -15,9 +16,9 @@ build:
 
 ## test: run the test suite
 test:
-	swift run LogoLightTests
+	swift run MacLogoControlTests
 
-## app: build build/LogoLight.app
+## app: build build/MacLogoControl.app
 app:
 	scripts/build-app.sh
 
@@ -35,14 +36,14 @@ run: app
 ## install: copy the app to /Applications (override with INSTALL_DIR=...)
 install: app
 	$(QUIT_APP)
-	rm -rf "$(INSTALL_DIR)/LogoLight.app"
+	rm -rf "$(INSTALL_DIR)/MacLogoControl.app" "$(INSTALL_DIR)/LogoLight.app"
 	cp -R $(APP) "$(INSTALL_DIR)/"
-	open "$(INSTALL_DIR)/LogoLight.app"
+	open "$(INSTALL_DIR)/MacLogoControl.app"
 
 ## uninstall: remove the app (uncheck "Disable Password" first to remove its sudoers rule)
 uninstall:
 	$(QUIT_APP)
-	rm -rf "$(INSTALL_DIR)/LogoLight.app"
+	rm -rf "$(INSTALL_DIR)/MacLogoControl.app" "$(INSTALL_DIR)/LogoLight.app"
 
 clean:
 	rm -rf .build build

@@ -1,6 +1,6 @@
 // Does a flat LEPWMBrightnessNitsMapping take the display's brightness out of the logo's?
 //
-//   pkill -x LogoLight     # it would fight this
+//   pkill -x "MacLogoControl|LogoLight"     # it would fight this
 //   swiftc -O tools/probes/flatmapping.swift -o /tmp/flatmapping > /tmp/flatmapping-build.log 2>&1 && /tmp/flatmapping
 //   /tmp/flatmapping --nudge   # instead: does a change of the display's brightness too small to see apply it? (about 15 s)
 //
@@ -10,7 +10,7 @@
 // alone), then with the original written back. After each step it prints LEPWMState and the logo's
 // PWM duty, and how AppliedNits moved over the first 2 s (does it jump or ramp?). With each mapping it
 // also fades the logo out and back in with the display turned down, to see whether a rise from dark
-// gives more light than the steady logo (LogoLight's Pulse peaked at twice it).
+// gives more light than the steady logo (Mac Logo Control's Pulse peaked at twice it).
 //
 // The original mapping, the display's brightness and normal lighting are put back at the end, and on
 // Ctrl-C. The keyboard backlight goes dark briefly during each fade out.
@@ -81,10 +81,10 @@ func duty() -> Double {
 let key = "LEPWMBrightnessNitsMapping"
 let pgrep = Process()
 pgrep.executableURL = URL(fileURLWithPath: "/usr/bin/pgrep")
-pgrep.arguments = ["-x", "LogoLight"]
+pgrep.arguments = ["-x", "MacLogoControl|LogoLight"]
 pgrep.standardOutput = FileHandle.nullDevice
 try pgrep.run(); pgrep.waitUntilExit()
-guard pgrep.terminationStatus != 0 else { print("Quit LogoLight first: it would fight this probe."); exit(1) }
+guard pgrep.terminationStatus != 0 else { print("Quit Mac Logo Control first: it would fight this probe."); exit(1) }
 guard let original = get(key) else { print("\(key) can't be read"); exit(1) }
 guard let originalDisplay = displayBrightness() else { print("can't read the display's brightness"); exit(1) }
 

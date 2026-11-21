@@ -5,7 +5,7 @@
 #   tools/probes/build.sh [outdir]
 #
 # These are throwaway research tools, not part of the app. Most of them change the real
-# logo, so quit LogoLight before using them (see README.md).
+# logo, so quit Mac Logo Control before using them (see README.md).
 set -eu
 
 SRC="$(cd "$(dirname "$0")" && pwd)"

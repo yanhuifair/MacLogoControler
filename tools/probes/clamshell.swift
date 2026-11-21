@@ -15,7 +15,7 @@
 //   ./clamshell --sample-only   # writes nothing: prints one set of readings and exits
 //   ./clamshell --power-event   # also runs attempt D
 //
-// Needs an external display (without one, closing the lid sleeps the Mac). Quit LogoLight first.
+// Needs an external display (without one, closing the lid sleeps the Mac). Quit Mac Logo Control first.
 // Ctrl-C restores normal lighting before exiting. The log is saved to the current directory.
 import CoreGraphics
 import Foundation
@@ -189,10 +189,10 @@ if args.contains("--sample-only") { exit(0) }
 
 let pgrep = Process()
 pgrep.executableURL = URL(fileURLWithPath: "/usr/bin/pgrep")
-pgrep.arguments = ["-x", "LogoLight"]
+pgrep.arguments = ["-x", "MacLogoControl|LogoLight"]
 pgrep.standardOutput = FileHandle.nullDevice
 try? pgrep.run(); pgrep.waitUntilExit()
-if pgrep.terminationStatus == 0 { say("Quit LogoLight first: its effects would fight the probe."); exit(1) }
+if pgrep.terminationStatus == 0 { say("Quit Mac Logo Control first: its effects would fight the probe."); exit(1) }
 if (get("LEBacklightMode") as? NSNumber)?.intValue != 2 {
     say("Turn the logo on first (LEBacklightMode is not 2): with the setting off nothing can light it."); exit(1)
 }
