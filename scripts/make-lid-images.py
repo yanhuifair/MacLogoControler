@@ -12,8 +12,9 @@ already knocked out to transparency — and writes per size and finish:
                                    lid's own canvas: two layers over the same box, so
                                    the light sits on the mark exactly, at any scale.
 
-Both are quantised to keep them light. The script prints the geometry the live view
-needs: each lid's aspect, and the mark's centre and size as shares of the lid.
+The marks are quantised to keep them light, the lids not at all. The script prints the
+geometry the live view needs: each lid's aspect, and the mark's centre and size as
+shares of the lid.
 """
 import os
 import sys
@@ -47,7 +48,9 @@ def process(src, out):
         straight = np.clip(rgb / (alpha / 255.0)[..., None], 0, 255)
     straight[alpha < 1] = 0
     shot = Image.fromarray(np.dstack([straight.astype(np.uint8), alpha.astype(np.uint8)]), "RGBA")
-    shot = shot.quantize(colors=255, method=Image.FASTOCTREE, dither=Image.FLOYDSTEINBERG).convert("RGBA")
+    # Full colour, no quantising: the printed logo is a sheen of barely 58 greys fading into black,
+    # and a 256-colour palette keeps barely 8 of them — the gradient breaks into bands and the mark
+    # stops matching Apple's shot. The lid is a photograph; it pays for its pixels.
     shot.save(out, optimize=True)
     print(f"{os.path.basename(out)}: {shot.width}x{shot.height} aspect {shot.width / shot.height:.4f} "
           f"({os.path.getsize(out) // 1024} KiB)")
