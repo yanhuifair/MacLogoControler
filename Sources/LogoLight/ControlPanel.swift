@@ -352,8 +352,7 @@ private struct PanelContent: View {
                         OptionTabs(options: [
                             OptionTabs<MacFinish>.Option(value: .silver, title: "Silver"),
                             OptionTabs<MacFinish>.Option(value: .spaceBlack, title: "Space Black"),
-                        ], selection: model.finish, choose: { model.setFinish($0) })
-                        .padding(.horizontal, PanelMetrics.iconInset)
+                        ], selection: model.finish, choose: { model.setFinish($0) }, spreads: false)
                     }
                     .padding(.vertical, 9)
                 }
@@ -626,6 +625,8 @@ private struct OptionTabs<Value: Hashable>: View {
     let options: [Option]
     let selection: Value
     let choose: (Value) -> Void
+    /// Whether the bar fills the width it's given, the tabs spread across it, or hugs its tabs.
+    var spreads = true
 
     @Environment(\.colorScheme) private var colorScheme
     /// One lozenge, shared by whichever tab is picked, so it slides rather than each lighting up on its own.
@@ -665,11 +666,11 @@ private struct OptionTabs<Value: Hashable>: View {
                 .accessibilityLabel(option.title)
                 .accessibilityAddTraits(isSelected ? [.isSelected] : [])
                 .tip(option.help)
-                if index < options.count - 1 { Spacer(minLength: 0) }
+                if spreads, index < options.count - 1 { Spacer(minLength: 0) }
             }
         }
         // As wide as the cards, so its edges line up with theirs, with the tabs spread across it.
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: spreads ? .infinity : nil)
         .padding(PanelMetrics.tabInset)
         // One background, and one only: the bar the tabs sit in, in the cards' material and corners.
         .background(GlassMaterial(shape: RoundedRectangle(cornerRadius: PanelMetrics.cardRadius,
