@@ -122,6 +122,15 @@ func panelStateTests(_ t: TestHarness) {
         t.expect(state.isDimmed)
     }
 
+    t.test("following the display's brightness greys out the slider too") {
+        let state = PanelState(status: status(.on), canControlDirectly: true, effect: .none, brightness: 0.8,
+                               followsDisplayBrightness: true)
+        t.expect(state.followsDisplayBrightness)
+        t.expect(state.canAdjust, "the rest is still in reach")
+        t.expect(!state.canChangeBrightness, "the display sets it")
+        t.expectEqual(state.brightness, 0.8) // what the slider shows, greyed out
+    }
+
     t.test("there's no text in the panel on a Mac with the logo") {
         for setting in [LogoIllumination.on, .off, nil] {
             for direct in [true, false] {

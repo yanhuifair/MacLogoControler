@@ -37,6 +37,8 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     /// Picks up changes made elsewhere, e.g. from Terminal: every 10 s, or every second while the
     /// menu is open.
     private var refreshTimer: Timer?
+    /// Watches the display's brightness while the logo follows it.
+    private var displayBrightnessTimer: Timer?
     /// Redraws the live view at the display's frame rate while the menu is open.
     private var glowLink: CADisplayLink?
     /// Launch at Login and the sudoers rule, read when the menu opens and after they're changed,
@@ -65,6 +67,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     private static let effectDefaultsKey = "Effect"
     private static let brightnessDefaultsKey = "Brightness"
     private static let followsBatteryDefaultsKey = "FollowsBattery"
+    private static let followsDisplayBrightnessDefaultsKey = "FollowsDisplayBrightness"
     /// The Charging switch: on, the logo breathes while the battery charges.
     private static let breathesWhileChargingDefaultsKey = "BreathesWhileCharging"
     /// The Morse message typed last, put back in the field at launch.
@@ -102,6 +105,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         loanWatcher.check()
         controller.start(brightness: brightness, effect: effect ?? .none,
                          followsBattery: defaults.bool(forKey: Self.followsBatteryDefaultsKey),
+                         followsDisplayBrightness: defaults.bool(forKey: Self.followsDisplayBrightnessDefaultsKey),
                          lightsWithLidClosed: defaults.bool(forKey: Self.lightsWithLidClosedDefaultsKey),
                          breathesWhileCharging: defaults.bool(forKey: Self.breathesWhileChargingDefaultsKey))
         // Without direct control, the first password also turns on Disable Password, unless the user
@@ -128,6 +132,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
 
         readMenuSettings()
         refresh()
+        scheduleDisplayBrightnessWatch()
         scheduleRefresh(every: 10)
         loanWatcher.onChange = { [weak self] in self?.refresh() }
         loanWatcher.start()
@@ -159,6 +164,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         panel.onLogoSwitched = { [weak self] isOn in self?.setLogo(isOn ? .on : .off) }
         panel.onBrightnessChanged = { [weak self] in self?.setBrightness($0) }
         panel.onFollowsBatteryChanged = { [weak self] in self?.setFollowsBattery($0) }
+        panel.onFollowsDisplayBrightnessChanged = { [weak self] in self?.setFollowsDisplayBrightness($0) }
         panel.onBreathesWhileChargingChanged = { [weak self] in self?.setBreathesWhileCharging($0) }
         panel.onEffectChosen = { [weak self] in self?.chooseEffect($0) }
         panel.onMorsePlay = { [weak self] in self?.playMorse($0) }
@@ -313,6 +319,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         PanelState(status: status, requested: requestedSetting, canControlDirectly: controller.canControlDirectly,
                    canFollowSound: controller.canFollowSound, effect: controller.effect, brightness: controller.brightness,
                    followsBattery: controller.followsBattery,
+                   followsDisplayBrightness: controller.followsDisplayBrightness,
                    breathesWhileCharging: controller.breathesWhileCharging, isBusy: isBusy, morse: controller.morse,
                    morseLoops: morseLoops)
     }
@@ -430,6 +437,29 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     private func setBrightness(_ brightness: Double) {
         controller.setBrightness(brightness)
         UserDefaults.standard.set(brightness, forKey: Self.brightnessDefaultsKey)
+    }
+
+    /// Turns following the display's brightness on or off, and watches it while it's on: a screen that
+    /// dims (the keyboard's keys, or macOS following the light) takes the logo with it.
+    private func setFollowsDisplayBrightness(_ follows: Bool) {
+        controller.setFollowsDisplayBrightness(follows)
+        UserDefaults.standard.set(follows, forKey: Self.followsDisplayBrightnessDefaultsKey)
+        scheduleDisplayBrightnessWatch()
+        refresh()
+    }
+
+    private func scheduleDisplayBrightnessWatch() {
+        displayBrightnessTimer?.invalidate()
+        displayBrightnessTimer = nil
+        guard controller.followsDisplayBrightness else { return }
+        let timer = Timer(timeInterval: 1, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self, self.controller.displayBrightnessDidChange() else { return }
+                self.updateMenu()
+            }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        displayBrightnessTimer = timer
     }
 
     private func setFollowsBattery(_ follows: Bool) {

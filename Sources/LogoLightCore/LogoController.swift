@@ -54,6 +54,10 @@ public final class LogoController {
     private var chosenBrightness = 1.0
     /// The battery's charge when it was last read, from 0 to 1. `nil` until a read has worked.
     private var batteryCharge: Double?
+    /// The display's brightness when it was last read, from 0 to 1.
+    private var displayLevel: Double?
+    /// Reads the display's brightness, which macOS keeps in step with the light around you.
+    private let readDisplayBrightness: @MainActor () -> Double?
 
     /// Plays effects and holds the brightness. `nil` when the logo can't be controlled directly.
     public let animator: LogoAnimator?
@@ -88,6 +92,7 @@ public final class LogoController {
         // A small tolerance: by default, sleeps can run tens of ms late, which shows in effects.
         sleep: @escaping LogoAnimator.Sleep = { try await Task.sleep(for: .seconds($0), tolerance: .milliseconds(2)) },
         batteryCharge: @escaping @MainActor () -> Double? = Battery.charge,
+        displayBrightness: @escaping @MainActor () -> Double? = DisplayBrightness.reading,
         powerState: @escaping @MainActor () -> Battery.PowerState? = Battery.powerState,
         wait: @escaping LogoAnimator.Sleep = { try await Task.sleep(for: .seconds($0)) },
         soundSource: SoundLevelSource? = nil,
@@ -102,6 +107,7 @@ public final class LogoController {
         self.verificationTimeout = verificationTimeout
         self.sleep = sleep
         readBatteryCharge = batteryCharge
+        readDisplayBrightness = displayBrightness
         readPowerState = powerState
         self.wait = wait
         self.mappingStore = mappingStore
@@ -271,7 +277,7 @@ public final class LogoController {
     /// Chooses the brightness. While the battery is followed, it's kept for when that's turned off.
     public func setBrightness(_ brightness: Double) {
         chosenBrightness = min(max(brightness, 0), 1)
-        if !followsBattery { apply(chosenBrightness) }
+        if !followsBattery && !followsDisplayBrightness { apply(chosenBrightness) }
     }
 
     /// Whether the brightness follows the battery's charge, as a battery indicator: normal when it's
@@ -282,8 +288,45 @@ public final class LogoController {
     public func setFollowsBattery(_ follows: Bool) {
         guard follows != followsBattery else { return }
         followsBattery = follows
-        if follows { readBattery() }
+        if follows {
+            // One thing at a time drives the brightness.
+            followsDisplayBrightness = false
+            readBattery()
+        }
         apply(currentBrightness)
+    }
+
+    /// Whether the brightness follows the display's, which macOS keeps in step with the light around
+    /// you (`DisplayBrightness`): the logo is then as bright as the screen it shines through, dimming
+    /// when the screen dims and the Mac with it at night.
+    public private(set) var followsDisplayBrightness = false
+
+    /// Turns following the display's brightness on or off. Off, the logo goes back to the chosen
+    /// brightness (or the battery's charge, if that's followed instead).
+    public func setFollowsDisplayBrightness(_ follows: Bool) {
+        guard follows != followsDisplayBrightness else { return }
+        followsDisplayBrightness = follows
+        if follows {
+            readDisplay()
+            setFollowsBattery(false)
+        }
+        apply(currentBrightness)
+    }
+
+    /// Call when the display's brightness may have changed, e.g. on each refresh: while it's followed, a
+    /// new level is applied. A level that can't be read leaves the brightness as it is.
+    @discardableResult
+    public func displayBrightnessDidChange() -> Bool {
+        guard followsDisplayBrightness else { return false }
+        let last = displayLevel
+        readDisplay()
+        guard displayLevel != last else { return false }
+        apply(currentBrightness)
+        return true
+    }
+
+    private func readDisplay() {
+        if let level = readDisplayBrightness() { displayLevel = min(max(level, 0), 1) }
     }
 
     /// Call when the battery's charge, or whether it's charging, may have changed. While the charge is
@@ -305,7 +348,8 @@ public final class LogoController {
     /// The brightness to show: the battery's charge while it's followed (the chosen brightness if it
     /// hasn't been read), otherwise the chosen one.
     private var currentBrightness: Double {
-        followsBattery ? batteryCharge ?? chosenBrightness : chosenBrightness
+        if followsDisplayBrightness { return displayLevel ?? chosenBrightness }
+        return followsBattery ? batteryCharge ?? chosenBrightness : chosenBrightness
     }
 
     private func readBattery() {
@@ -636,14 +680,20 @@ public final class LogoController {
     /// the level is the battery's charge, and `brightness` is kept for when that's turned off. With
     /// `breathesWhileCharging` and the battery charging, Breathe plays in place of `effect`.
     public func start(brightness: Double?, effect: LogoEffect, followsBattery: Bool = false,
-                      lightsWithLidClosed: Bool = false, breathesWhileCharging: Bool = false) {
+                      followsDisplayBrightness: Bool = false, lightsWithLidClosed: Bool = false,
+                      breathesWhileCharging: Bool = false) {
         guard let animator else { return }
         self.lightsWithLidClosed = lightsWithLidClosed
         updateLidOverride()
         untieBrightnessFromDisplay()
         if let brightness { chosenBrightness = min(max(brightness, 0), 1) }
         self.followsBattery = followsBattery
-        if followsBattery { readBattery() }
+        self.followsDisplayBrightness = followsDisplayBrightness
+        if followsDisplayBrightness {
+            self.followsBattery = false
+            readDisplay()
+        }
+        if self.followsBattery { readBattery() }
         animator.brightness = currentBrightness
         animator.select(effect)
         self.breathesWhileCharging = breathesWhileCharging

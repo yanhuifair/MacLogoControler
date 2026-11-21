@@ -36,7 +36,7 @@
       Your lid as it is right now, in its own finish (space black or silver, and you can pick the other), following effects and changes made elsewhere.
       <br><br>
       <b>Brightness</b><br>
-      A slider that eases the logo onto each level. Your display's brightness no longer changes it; it still adapts to the light around you.
+      A slider that eases the logo onto each level. Your display's brightness no longer changes it; it still adapts to the light around you. Turn on Automatic and the logo follows the display's brightness instead, so it dims with the screen.
       <br><br>
       <b>Effects</b><br>
       Breathe, Pulse and Heartbeat, made from the LED's own hardware fades, peaking at your brightness.

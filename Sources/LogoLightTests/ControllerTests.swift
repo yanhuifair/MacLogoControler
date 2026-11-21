@@ -459,6 +459,13 @@ final class FakeSound: SoundLevelSource {
 
 /// A stand-in for the internal battery, so tests never read the real one.
 @MainActor
+/// The display's brightness, as `DisplayServices` would give it: from 0 to 1, or `nil` when it can't be
+/// read (the lid is closed).
+final class FakeDisplay {
+    var level: Double?
+    var reads = 0
+}
+
 final class FakeBattery {
     /// From 0 to 1, or `nil` when it can't be read.
     var charge: Double? = 1
@@ -508,6 +515,7 @@ struct Fixture {
     let daemon: FakeDaemon
     let clock: FakeClock
     let battery = FakeBattery()
+    let display = FakeDisplay()
     let sound = FakeSound()
     let timer = FakeTimer()
     let mappings = MemoryMappingStore()
@@ -543,6 +551,10 @@ struct Fixture {
             batteryCharge: { [battery] in
                 battery.reads += 1
                 return battery.charge
+            },
+            displayBrightness: { [display] in
+                display.reads += 1
+                return display.level
             },
             powerState: { [battery] in
                 battery.chargingReads += 1

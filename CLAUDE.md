@@ -286,7 +286,9 @@ wide, measured:
   knob, which would need a 179-point panel).
 
 The panel's order is the user's: the LogoLight switch (then called Backlight) first ("so its much easier to enable,
-disable it"), then the live view, then the brightness slider (its own card), then the effects.
+disable it"), then the live view, then the brightness slider (its own card, with the Automatic switch above it:
+the logo follows the display's brightness, read through DisplayServices, which macOS keeps in step with
+the light around you), then the effects.
 The live view is drawn as the lid of this MacBook Pro in its real proportions and
 its own finish, space black or silver (`MacFinish`, read from the device tree's `housing-color` and
 Launch Services' device types), which the panel's segmented picker can switch to the other one

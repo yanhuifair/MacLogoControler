@@ -281,6 +281,34 @@ func brightnessTests(_ t: TestHarness) async {
         t.expect(f.daemon.lit)
     }
 
+    await t.test("follows the display's brightness while the Automatic switch is on") {
+        let f = Fixture(direct: true)
+        f.display.level = 0.4
+        f.controller.start(brightness: 0.9, effect: .none, followsDisplayBrightness: true)
+        t.expect(f.controller.followsDisplayBrightness)
+        t.expect(!f.controller.followsBattery, "one thing at a time drives the brightness")
+        t.expectEqual(f.controller.brightness, 0.4)
+        f.display.level = 0.15
+        t.expect(f.controller.displayBrightnessDidChange(), "a dimmer screen takes the logo with it")
+        t.expectEqual(f.controller.brightness, 0.15)
+        f.display.level = 0.15
+        t.expect(!f.controller.displayBrightnessDidChange(), "nothing changed, nothing to do")
+    }
+
+    await t.test("stops following the display when the battery takes over") {
+        let f = Fixture(direct: true)
+        f.display.level = 0.3
+        f.battery.charge = 0.7
+        f.controller.setFollowsDisplayBrightness(true)
+        t.expectEqual(f.controller.brightness, 0.3)
+        f.controller.setFollowsBattery(true)
+        t.expect(!f.controller.followsDisplayBrightness)
+        t.expectEqual(f.controller.brightness, 0.7)
+        f.display.level = 0.1
+        t.expect(!f.controller.displayBrightnessDidChange(), "the display isn't followed any more")
+        t.expectEqual(f.controller.brightness, 0.7)
+    }
+
     await t.test("turns the logo on at the chosen brightness") {
         let f = Fixture(backlightMode: 0, direct: true)
         f.daemon.stepPerRead = 0.05

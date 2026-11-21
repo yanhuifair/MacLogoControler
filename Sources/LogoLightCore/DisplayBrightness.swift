@@ -31,6 +31,11 @@ public struct DisplayBrightness {
         return getFunction(display, &value) == 0 ? value : nil
     }
 
+    /// The built-in display's brightness now, from 0 to 1, or `nil` where it can't be read.
+    public static func reading() -> Double? {
+        DisplayBrightness()?.value.map(Double.init)
+    }
+
     @discardableResult
     public func set(_ value: Float) -> Bool { setFunction(display, value) == 0 }
 

@@ -15,6 +15,7 @@ final class ControlPanel: NSView {
     var onLogoSwitched: ((Bool) -> Void)?
     var onBrightnessChanged: ((Double) -> Void)?
     var onFollowsBatteryChanged: ((Bool) -> Void)?
+    var onFollowsDisplayBrightnessChanged: ((Bool) -> Void)?
     var onBreathesWhileChargingChanged: ((Bool) -> Void)?
     var onEffectChosen: ((LogoEffect) -> Void)?
     /// Play pressed (or Return in the field), with the message typed.
@@ -56,6 +57,7 @@ final class ControlPanel: NSView {
         model.onLogoSwitched = { [weak self] in self?.onLogoSwitched?($0) }
         model.onBrightnessChanged = { [weak self] in self?.onBrightnessChanged?($0) }
         model.onFollowsBatteryChanged = { [weak self] in self?.onFollowsBatteryChanged?($0) }
+        model.onFollowsDisplayBrightnessChanged = { [weak self] in self?.onFollowsDisplayBrightnessChanged?($0) }
         model.onBreathesWhileChargingChanged = { [weak self] in self?.onBreathesWhileChargingChanged?($0) }
         model.onEffectChosen = { [weak self] in self?.onEffectChosen?($0) }
         model.onMorsePlay = { [weak self] in self?.onMorsePlay?($0) }
@@ -156,6 +158,7 @@ private final class PanelModel {
     private(set) var state: PanelState
     var isOn: Bool
     var followsBattery: Bool
+    var followsDisplayBrightness: Bool
     var breathesWhileCharging: Bool
     var effect: LogoEffect
     var loops: Bool
@@ -169,6 +172,7 @@ private final class PanelModel {
     var onLogoSwitched: ((Bool) -> Void)?
     var onBrightnessChanged: ((Double) -> Void)?
     var onFollowsBatteryChanged: ((Bool) -> Void)?
+    var onFollowsDisplayBrightnessChanged: ((Bool) -> Void)?
     var onBreathesWhileChargingChanged: ((Bool) -> Void)?
     var onEffectChosen: ((LogoEffect) -> Void)?
     var onMorsePlay: ((String) -> Void)?
@@ -187,6 +191,7 @@ private final class PanelModel {
         self.state = state
         isOn = state.isOn
         followsBattery = state.followsBattery
+        followsDisplayBrightness = state.followsDisplayBrightness
         breathesWhileCharging = state.breathesWhileCharging
         effect = state.effect
         loops = state.morseLoops
@@ -197,6 +202,7 @@ private final class PanelModel {
         self.state = state
         isOn = state.isOn
         followsBattery = state.followsBattery
+        followsDisplayBrightness = state.followsDisplayBrightness
         breathesWhileCharging = state.breathesWhileCharging
         effect = state.effect
         loops = state.morseLoops
@@ -226,8 +232,16 @@ private final class PanelModel {
         isDraggingBrightness = editing
     }
 
+    func flipDisplayBrightness(_ on: Bool) {
+        followsDisplayBrightness = on
+        // One thing at a time drives the brightness: the battery's switch goes off with it.
+        if on { followsBattery = false }
+        onFollowsDisplayBrightnessChanged?(on)
+    }
+
     func flipBattery(_ on: Bool) {
         followsBattery = on
+        if on { followsDisplayBrightness = false }
         onFollowsBatteryChanged?(on)
     }
 
@@ -359,6 +373,18 @@ private struct PanelContent: View {
 
     private var brightnessCard: some View {
         PanelCard {
+            PanelRow(title: "Automatic", icon: .init(symbol: "sun.max"), isGreyed: !state.canAdjust,
+                     help: "The logo follows the display's brightness, which macOS keeps in step with the light around you.") {
+                Toggle("Automatic brightness",
+                       isOn: Binding(get: { model.followsDisplayBrightness },
+                                     set: { model.flipDisplayBrightness($0) }))
+                    .labelsHidden()
+                    .toggleStyle(.switch)
+                    .controlSize(.small)
+            }
+
+            RowSeparator()
+
             HStack(spacing: PanelMetrics.labelSpacing) {
                 Image(systemName: "sun.min.fill")
                     .font(.system(size: 11))
@@ -845,12 +871,13 @@ enum PanelRenderer {
     static func render(to folder: String) {
         let options = Options(ProcessInfo.processInfo.environment)
         func state(_ setting: LogoIllumination, isSupported: Bool = true, canControlDirectly: Bool = true,
-                   canFollowSound: Bool = true, followsBattery: Bool = false,
+                   canFollowSound: Bool = true, followsBattery: Bool = false, followsDisplayBrightness: Bool = false,
                    breathesWhileCharging: Bool = false) -> PanelState {
             let status = LogoStatus(isSupported: isSupported, setting: isSupported ? setting : nil, source: .daemon,
                                     isLit: setting == .on, outputLevel: 0.2)
             return PanelState(status: status, canControlDirectly: canControlDirectly, canFollowSound: canFollowSound,
                               effect: options.effect, brightness: options.brightness, followsBattery: followsBattery,
+                              followsDisplayBrightness: followsDisplayBrightness,
                               breathesWhileCharging: breathesWhileCharging)
         }
         let on = state(.on)
@@ -858,6 +885,7 @@ enum PanelRenderer {
         looping.morse = MorseMessage(text: "SOS", loops: true)
         looping.morseLoops = true
         let states = [("on", on), ("morse", looping), ("off", state(.off)), ("battery", state(.on, followsBattery: true)),
+                      ("automatic", state(.on, followsDisplayBrightness: true)),
                       ("nosound", state(.on, canFollowSound: false)),
                       ("charging", state(.on, breathesWhileCharging: true)),
                       ("fallback", state(.on, canControlDirectly: false)), ("unsupported", state(.off, isSupported: false))]

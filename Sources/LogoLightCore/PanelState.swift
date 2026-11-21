@@ -21,6 +21,8 @@ public struct PanelState: Equatable, Sendable {
     public var brightness: Double
     /// Whether the brightness follows the battery's charge (the Battery switch).
     public var followsBattery: Bool
+    /// Whether it follows the display's brightness, and so the light around you (the Automatic switch).
+    public var followsDisplayBrightness: Bool
     /// Whether the logo breathes while the battery charges (the Charging switch).
     public var breathesWhileCharging: Bool
     /// The Morse message being sent, if any.
@@ -38,8 +40,8 @@ public struct PanelState: Equatable, Sendable {
     /// straight away, so the rest of the panel follows the switch at once instead of when the fade ends.
     public init(status: LogoStatus, requested: LogoIllumination? = nil, canControlDirectly: Bool,
                 canFollowSound: Bool = true, effect: LogoEffect, brightness: Double, followsBattery: Bool = false,
-                breathesWhileCharging: Bool = false, isBusy: Bool = false, morse: MorseMessage? = nil,
-                morseLoops: Bool = false) {
+                followsDisplayBrightness: Bool = false, breathesWhileCharging: Bool = false, isBusy: Bool = false,
+                morse: MorseMessage? = nil, morseLoops: Bool = false) {
         let setting = requested ?? status.setting
         isSupported = status.isSupported
         isOn = status.isSupported && setting != .off
@@ -49,6 +51,7 @@ public struct PanelState: Equatable, Sendable {
         self.effect = effect
         self.brightness = brightness
         self.followsBattery = followsBattery
+        self.followsDisplayBrightness = followsDisplayBrightness
         self.breathesWhileCharging = breathesWhileCharging
         self.morse = canControlDirectly ? morse : nil
         self.morseLoops = morseLoops
@@ -69,9 +72,9 @@ public struct PanelState: Equatable, Sendable {
     /// when it's back on.
     public var canAdjust: Bool { showsAdjustments && isOn }
 
-    /// Whether the brightness slider can be moved: as for the rest, and not while the battery sets the
-    /// brightness. It's greyed out then, showing the charge.
-    public var canChangeBrightness: Bool { canAdjust && !followsBattery }
+    /// Whether the brightness slider can be moved: as for the rest, and not while the display or the
+    /// battery sets the brightness. It's greyed out then, showing the level they give.
+    public var canChangeBrightness: Bool { canAdjust && !followsBattery && !followsDisplayBrightness }
 
     /// Whether a Morse message is being sent, so the play button shows stop.
     public var isSendingMorse: Bool { morse != nil }
