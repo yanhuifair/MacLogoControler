@@ -544,19 +544,23 @@ private struct PanelContent: View {
                 .disabled(!model.canPlay)
                 .help(model.isSendingMorse ? "Stop" : "Play")
                 .accessibilityLabel("Play Morse code")
-
-                // One button, lit while the message repeats: as AppKit marks a toggle button that's on.
-                Toggle(isOn: Binding(get: { model.loops }, set: { model.setLoops($0) })) {
-                    Image(systemName: "repeat")
-                }
-                .toggleStyle(.button)
-                .buttonStyle(.bordered)
-                .help("Repeat until stopped")
-                .accessibilityLabel("Repeat Morse code")
             }
             .padding(.horizontal, PanelMetrics.iconInset)
             .frame(height: PanelMetrics.rowHeight)
             .disabled(!state.canAdjust)
+
+            RowSeparator()
+
+            // The loop, on a row of its own, as a switch like the panel's other settings.
+            PanelRow(title: "Repeat", icon: .init(symbol: "repeat"),
+                     isGreyed: !state.canAdjust,
+                     help: "Play the message over and over until it's stopped.") {
+                Toggle("Repeat until stopped", isOn: Binding(get: { model.loops }, set: { model.setLoops($0) }))
+                    .labelsHidden()
+                    .toggleStyle(.switch)
+                    .controlSize(.small)
+                    .accessibilityLabel("Repeat Morse code")
+            }
         }
     }
 }
