@@ -1,21 +1,57 @@
-# LogoLight: notes for picking up work
+# Mac Logo Control: notes for picking up work
 
 A macOS menu bar app that controls the illuminated Apple logo on the back of the MacBook Pro
 with PROLED XDR Display: on/off, fades, effects. Start with `README.md` (features, how it
 works, project layout). Then read `docs/corebrightnessd.md`, which has everything known about
 the private interface the app uses, and `tools/probes/README.md` for the tools that found it.
 
+## Renamed: the app was LogoLight
+
+Asked for on 2026-11-22 ("软件改名为mac logo control", then confirmed as **Mac Logo Control**,
+identifier `MacLogoControl`), first release under the new name 1.5.0. Everything below says the
+new name; old release notes still say LogoLight where they describe what shipped.
+
+- **Names**: modules `MacLogoControlCore` / `MacLogoControl` / `MacLogoControlTests`, executable and
+  bundle `MacLogoControl.app`, extension `MacLogoControlControls.appex`, env vars `MACLOGOCONTROL_*`,
+  zip `MacLogoControl-X.Y.Z.zip`, site download `MacLogoControl.zip`. `CFBundleName` is
+  `MacLogoControl` (15 characters is the limit) and `CFBundleDisplayName` "Mac Logo Control", which is
+  what people read.
+- **Bundle ID** `app.logolight.MacLogoControl`: the prefix stays, because logolight.app stays the
+  app's home (the user's choice: rename the repo, keep the domain). `LegacyName`
+  (MacLogoControlCore) copies the old `app.logolight.LogoLight` preferences across on first launch,
+  once, before anything reads them; `LegacyNameTests` covers it.
+- **What the rename costs a user**, and the release's notes must say it: **Launch at Login** is
+  registered per bundle ID, so it's off until switched on again (the panel reads the real
+  registration, so it doesn't lie), and a **placed Control Center control** names the old extension
+  and has to be added again in Edit Controls. The **sudoers rule** moved to
+  `/etc/sudoers.d/maclogocontrol`; `PasswordlessRule.paths` still counts the old
+  `/etc/sudoers.d/logolight` as installed, and `removeScript` deletes both.
+- **Codeman** reads a steps-aside key from the app's bundle, so `Resources/Info.plist` carries both
+  `LogoLightStepsAsideForCodeman` and `MacLogoControlStepsAsideForCodeman`. Codeman still looks the
+  app up under the old name and ID: its side (`packages/desktop/src/logo.rs` in Ark0N/Codeman) has
+  to learn `MacLogoControl` before the handover works again.
+- **Left to do**: the GitHub repo is renamed to `Ark0N/MacLogoControl` (GitHub redirects clones); the
+  Homebrew tap still ships `ark0n/tap/logolight` and needs a `maclogocontrol` cask (the old one kept
+  as an alias or deprecated); every picture — banner, menu GIFs, the site's menu shots,
+  `control-center.png`, `og-*.jpg`, the app icon if it carries the word — shows the old name until
+  drawn again (`scripts/make-banner.swift`, `scripts/make-media.swift`, `MACLOGOCONTROL_RENDER_PANEL`).
+  The banner draws its word at a fixed `x: left + 160` in 66 pt semibold, and "Mac Logo Control" is
+  about 1.9 times as wide as "LogoLight", so check it fits before shipping a redrawn one.
+  The site's download must go up *with* `MacLogoControl.zip`: `index.html` now links
+  `/MacLogoControl.zip`, which 404s until the 1.5.0 zip is copied there.
+  The local checkout directory is still `~/Documents/GitHub/LogoLight`.
+
 ## Build and test
 
 ```sh
-make test      # swift run LogoLightTests (a plain executable, see below)
-make app       # build/LogoLight.app, ad-hoc signed, hardened runtime
+make test      # swift run MacLogoControlTests (a plain executable, see below)
+make app       # build/MacLogoControl.app, ad-hoc signed, hardened runtime
 make install   # copy to /Applications, (re)launch
 ```
 
 - **The app builds with the Command Line Tools alone.** XCTest and swift-testing aren't available
   there, so the tests are an executable target with a tiny harness
-  (`Sources/LogoLightTests/Harness.swift`). Add new suites to `Sources/LogoLightTests/main.swift`.
+  (`Sources/MacLogoControlTests/Harness.swift`). Add new suites to `Sources/MacLogoControlTests/main.swift`.
   Only the Control Center control (`Controls/`) needs Xcode 26+ (this MacBook has Xcode 27.2):
   `build-app.sh` builds it with `swiftc` and Xcode's `appintentsmetadataprocessor`, the way Xcode
   builds a widget extension, and leaves it out when that tool or the macOS 26 SDK is missing.
@@ -23,11 +59,12 @@ make install   # copy to /Applications, (re)launch
   `@MainActor`, and Timer and notification closures use `MainActor.assumeIsolated`.
 - The app bundle is assembled by `scripts/build-app.sh` (there's no Xcode project).
   `Resources/Info.plist` is a template with `LSUIElement` (no Dock icon).
-- The Control Center control (a toggle, shown as "LogoLight" since 1.3.0; its kind is still
-  `Backlight`, which mustn't change, or placed controls are orphaned) is an extension. It's sandboxed (the system
+- The Control Center control (a toggle, shown as "Mac Logo Control"; it read "LogoLight" from 1.3.0
+  and "Backlight" before that, and its kind is still `Backlight`, which mustn't change, or placed
+  controls are orphaned) is an extension. It's sandboxed (the system
   ignores extensions that aren't), and reaches the running app through `ControlLink` (a Mach port
   named `<bundle ID>.control`, the one name its entitlements let it look up); only the app touches
-  the logo. `ControlLink.swift` is compiled into both, so it mustn't use the rest of LogoLightCore.
+  the logo. `ControlLink.swift` is compiled into both, so it mustn't use the rest of MacLogoControlCore.
   WidgetKit gives apps no slider, only toggles and buttons. The user asked for a brightness slider
   there; Brighter/Dimmer buttons and a button opening the menu's slider were tried, and the user
   had them removed ("these buttons doesn't make much sense"). A debug build run from `.build` has no
@@ -46,7 +83,7 @@ too), `ListAgents` here lists it, and it runs livecheck and probes sent with `Se
 the output back (first done 2026-11-20). So:
 
 - Logic changes can be made and tested anywhere. The fakes in
-  `Sources/LogoLightTests/ControllerTests.swift` (`SimulatedMac`, `FakeDaemon`, which logs every
+  `Sources/MacLogoControlTests/ControllerTests.swift` (`SimulatedMac`, `FakeDaemon`, which logs every
   key it's sent, and `FakeClock`) model the real hardware's behaviour. Use
   `Fixture(timeDriven: true)` for new tests: the fake's fades then move as the code sleeps, along
   the measured curve in the daemon's 17.5 ms frames, so landings and overshoots look like the
@@ -61,9 +98,10 @@ the output back (first done 2026-11-20). So:
 - Anything that changes what the LED does must be checked on the MacBook before it's called
   done, with `tools/livecheck`. Say so explicitly if it wasn't.
 - To see the panel anywhere, without touching the logo or the screen, draw it to PNGs in each
-  state from a debug build: `LOGOLIGHT_RENDER_PANEL=/some/folder .build/debug/LogoLight`. It
+  state from a debug build: `MACLOGOCONTROL_RENDER_PANEL=/some/folder .build/debug/MacLogoControl`
+  (the folder must exist; the pictures are written with `try?`, so they just don't appear). It
   prints any label that doesn't fit, so check its output after changing the layout. With
-  `LOGOLIGHT_RENDER_MENU=1` it also draws the whole menu (`menu-dark.png`, `menu-light.png`): the panel
+  `MACLOGOCONTROL_RENDER_MENU=1` it also draws the whole menu (`menu-dark.png`, `menu-light.png`): the panel
   with the menu's own items under it, imitated (an `NSMenu` can't be drawn offscreen), in the menu's
   rounded shape on clear. That's what the README's menu GIF is made from.
   The panel is SwiftUI — an `NSHostingView` in the menu item's view, so the menu is AppKit's and the
@@ -72,13 +110,13 @@ the output back (first done 2026-11-20). So:
   bordered `Button`s). The cards' glass is drawn (`GlassMaterial`): `.glassEffect` and
   `NSGlassEffectView` both come out blank in a picture, which is how the README's and the site's are
   made, and glass on a menu's glass is discouraged. What the panel shows and greys out is worked out in
-  `PanelState` (LogoLightCore), which has tests. Typing in the field and flipping a switch were checked
+  `PanelState` (MacLogoControlCore), which has tests. Typing in the field and flipping a switch were checked
   inside a real menu with posted events: both work. The app draws switches and sliders in the accent
   colour only in the key window of the active app, so the renderer brings the app forward, orders an
   invisible window in and makes that key; without it the pictures would show them grey, as they are in
   a menu before it's key. SwiftUI lays out on its next turn, so `ControlPanel.settle()` waits for it
   before the picture is measured.
-  `LOGOLIGHT_OPEN_MENU=1 .build/debug/LogoLight` opens the real menu. Quit LogoLight first, and
+  `MACLOGOCONTROL_OPEN_MENU=1 .build/debug/MacLogoControl` opens the real menu. Quit the app first, and
   don't use it while the user is working: it interrupts them, and the menu won't stay open.
 
 ## Rules learned the hard way
@@ -86,8 +124,8 @@ the output back (first done 2026-11-20). So:
 - **Never let a failed build reach the hardware.** Chain build-and-run with `&&`, not `;`, and
   don't pipe the build (`swift build | tail && run` tests `tail`, not the build). Send its output
   to a file instead. This has gone wrong twice: a stale binary ran against the real logo.
-- Writing to `corebrightnessd` changes the real logo immediately, for every user. Quit LogoLight
-  before experimenting (its effects fight you), and restore normal lighting afterwards (the
+- Writing to `corebrightnessd` changes the real logo immediately, for every user. Quit Mac Logo
+  Control before experimenting (its effects fight you), and restore normal lighting afterwards (the
   command is in `tools/probes/README.md`).
 - Writing `DisplayLogicalState` with the value it already has is ignored. Release a held level
   with a state *change*.
@@ -105,10 +143,13 @@ the output back (first done 2026-11-20). So:
 
 ## Git
 
-- Remote: `https://github.com/Ark0N/LogoLight` (**public** since 2026-11-07, MIT). Work on `main`
+- Remote: `https://github.com/Ark0N/MacLogoControl` (**public** since 2026-11-07, MIT; renamed from
+  `Ark0N/LogoLight` on 2026-11-22, which GitHub redirects, so old clones and the cask keep working).
+  The local checkout is still `~/Documents/GitHub/LogoLight`. Work on `main`
   unless asked otherwise, commit in small logical steps, and push when a piece of work is done.
   Releases are tagged (`v1.0.0` is commit 76c389a, build 105; `v1.1.0` is 8b7d3b4, build 134; `v1.1.1` is e41948d, build 138) and published as GitHub Releases
-  with the notarized zip (`gh release create vX.Y.Z dist/LogoLight-X.Y.Z.zip`). `v1.2.0` is e6960d1,
+  with the notarized zip (`gh release create vX.Y.Z dist/MacLogoControl-X.Y.Z.zip`; up to 1.4.0 the
+  zips were named `LogoLight-…`). `v1.2.0` is e6960d1,
   build 144; `v1.3.0` is 5c25500, build 163;
   `v1.3.1` is e859ecd, build 169; `v1.4.0` is ffb87f5, build 195.
 - Commit messages: a short imperative subject, then a body that explains *why*. Use the same
@@ -127,13 +168,14 @@ the output back (first done 2026-11-20). So:
   `scripts/notarize.sh` has the details. This MacBook has the Developer ID identity (team
   CGMJ6YKL5G) and the `logolight` notarytool profile. First run 2026-11-07 (1.0.0, build 94):
   Accepted, "Ready for distribution", no issues, stapled; `spctl` says Notarized Developer ID.
-  The zip goes to `site/public/LogoLight.zip` (not in git) for the website's download.
+  The zip goes to `site/public/MacLogoControl.zip` (not in git) for the website's download; 1.4.0
+  and earlier were served as `LogoLight.zip`, which stays up for anyone still linking to it.
   **1.0.0 shipped 2026-11-07**: build 105 (commit 76c389a, tag `v1.0.0`), notarized with no
   issues, on https://logolight.app and as a GitHub Release. **1.1.0 shipped 2026-11-08**: build
   134 (commit 8b7d3b4, tag `v1.1.0`), with the battery indicator and Morse code (PRs #1-#3; Lit
   with Lid Closed is in it but out of the menu), notarized with no issues; the user tried it first.
   The README's banner and menu GIF and the site's menu pictures were drawn again for it
-  (`make-media.swift`, `make-banner.swift`, and the site's from `LOGOLIGHT_RENDER_PANEL` at scale 5,
+  (`make-media.swift`, `make-banner.swift`, and the site's from `MACLOGOCONTROL_RENDER_PANEL` at scale 5,
   transparent: no effect for on and off, Breathe at 0.9 with the glow at 0 for the hero). The site's
   `og.jpg` then still showed the 1.0 menu (since 1.2.0 it's the banner, as `og-120.jpg`). **1.1.1 shipped the same
   day**: build 138 (commit e41948d, tag `v1.1.1`), Lit with Lid Closed back in the menu with
@@ -146,7 +188,7 @@ the output back (first done 2026-11-20). So:
   tall, so the site's menu pictures are 850 × 2250 and `.screen` is 626 points); the taglines say
   "or glow with your music". The user then asked for the README's menu GIF to "show the whole app
   including the disable password and other options" and to be bigger: since then it's the whole
-  menu (`LOGOLIGHT_RENDER_MENU`, 582 points tall with Disable Password and Launch at Login
+  menu (`MACLOGOCONTROL_RENDER_MENU`, 582 points tall with Disable Password and Launch at Login
   checked) at scale 4, 680 × 2328, shown 320 wide, with clear corners edged onto GitHub's page
   colours (`page` in `make-media.swift`). The site's pictures are cached for a day under their names (`_headers`),
   so redrawn ones get a new name: `menu-*-120.png` and `og-120.jpg` (the banner at 1200 × 630,
@@ -179,7 +221,7 @@ the output back (first done 2026-11-20). So:
   On the MacBook before the release (Codeman closed): `tools/livecheck --charging` twice and the
   full run, all ok but one line. Breathe while "charging" peaked at the brightness (0.265 at 0.5)
   with cycles of 6.31 and 6.29 s, and switching Charging off landed in 1.0 s with no bounce.
-  **Codeman's blinker (`codeman-desktop --logo-blink`) drives the logo while LogoLight is quit**: a
+  **Codeman's blinker (`codeman-desktop --logo-blink`) drives the logo while the app is quit**: a
   first run with it going read a peak of 1.0 and cycles of 7.5 and 3.8 s. Check for it before
   livecheck. The one line: `sound: beats at 2 Hz` counted 8, 1 and 6 of 10 beats; 1.2.0's code
   counted 7 twice the same evening, so it isn't from this release, and wasn't looked into.
@@ -189,7 +231,8 @@ the output back (first done 2026-11-20). So:
   branch first: "I tested it, seems to work as it should". It was built, notarized and deployed by
   the MacBook's Claude Code session over Remote Control; the zip was then downloaded from the site,
   its sha256 checked against the MacBook's, and released from the Mac mini. Right after a deploy,
-  the edge served the old `LogoLight.zip` and `llms.txt` for about a minute.
+  the edge served the old `LogoLight.zip` and `llms.txt` for about a minute. (`_headers` caches
+  downloads by name, so the first `MacLogoControl.zip` is fresh the moment it's deployed.)
   Not checked for 1.3.0: PR #7 with the lid closed (its author measured it), the loan with a real
   Codeman, the plug-in wait with a real charger, and the Charging row and the new name in the real
   menu and in Control Center.
@@ -199,25 +242,31 @@ the output back (first done 2026-11-20). So:
   the usual `wrangler login` can't reach its localhost callback and times out after 2 minutes:
   run `npx wrangler login --device` in the background and give the user the link and code it
   prints (5 minutes to approve). For a new
-  version: bump `VERSION`, `make dist`, copy the zip to `site/public/LogoLight.zip`, update the
+  version: bump `VERSION` (also the default in `scripts/build-app.sh`), `make dist`, copy the zip to
+  `site/public/MacLogoControl.zip`, update the
   version and date in the site's JSON-LD (`index.html`) and `llms.txt` and the sitemap's
   `lastmod`, deploy, tag, `gh release create`, then ping IndexNow (below), and run
   `gh workflow run logolight.yml -R Ark0N/homebrew-tap` (or the tap catches up within a day).
   The release notes follow 1.3.1's: they open with "Install it with [Homebrew](https://brew.sh),
-  or download `LogoLight-X.Y.Z.zip` below:" and the command in a `sh` block (the user asked for
+  or download `MacLogoControl-X.Y.Z.zip` below:" and the command in a `sh` block (the user asked for
   it at the top, 2026-11-12), then what changed, then the download paragraph; from the next
   release on, also `brew upgrade --cask logolight` for those who installed it that way.
 - **Homebrew** (2026-11-11, the user's choice): `brew install --cask ark0n/tap/logolight`, from
   the public tap `Ark0N/homebrew-tap` (`Casks/logolight.rb`). Its workflow looks for a newer
-  LogoLight release daily, points the cask at it, and pushes that only after `brew style`, `brew
+  Mac Logo Control release daily, points the cask at it, and pushes that only after `brew style`, `brew
   audit` and a real install and `--zap` uninstall pass on a macOS runner; pushes and PRs get the
   same checks. Homebrew 6+ loads a non-official tap only once it's trusted: installing by the full
   name trusts that cask, so the README's line works as it is (the user installed 1.3.1 that way,
   2026-11-12: "brew install works"). The official homebrew-cask needs a
   more notable repo (far more stars when self-submitted); worth trying once LogoLight has them.
   The cask's `zap` removes the sudoers rule (it's not in `uninstall`, whose `delete` runs `sudo`
-  even when there's nothing to delete).
-- **Promotion on GitHub** (2026-11-11): the repo has 20 topics (GitHub's limit). LogoLight is in
+  even when there's nothing to delete). **After the rename the tap still says `logolight`**: it needs
+  a `maclogocontrol` cask (new token, pointing at `Ark0N/MacLogoControl`'s releases, with `zap`
+  deleting both `/etc/sudoers.d/maclogocontrol` and the old `logolight` one) and the old token kept
+  as a deprecated alias, plus its workflow pointed at the new repo — none of that is done yet, so the
+  README and the site still give `brew install --cask ark0n/tap/logolight`.
+- **Promotion on GitHub** (2026-11-11): the repo has 20 topics (GitHub's limit). Listed under the old
+  name: LogoLight is in
   jaywcjlove/awesome-mac (Menu Bar Tools, PR #4349); serhii-londar/open-source-mac-os-apps PR
   #2026 waits for that list's batch merges. iCHAIT/awesome-macOS takes PRs only from
   collaborators since 2026-10-21 and closed outside suggestions as not planned, so don't retry it.
@@ -243,14 +292,16 @@ the output back (first done 2026-11-20). So:
 
 ## Decisions (the user's call)
 
-- **Bundle ID**: `app.logolight.LogoLight`, after the user's domain, logolight.app (chosen
-  2026-11-07, replacing the placeholder `io.github.logolight.LogoLight`; the user's settings were
-  copied over with `defaults export`/`import`). Don't change it after the first release: that
-  resets the saved preferences and Launch at Login, and orphans placed Control Center controls.
+- **Bundle ID**: `app.logolight.MacLogoControl`, still under the user's domain (chosen 2026-11-07 as
+  `app.logolight.LogoLight`, after the placeholder `io.github.logolight.LogoLight`; the leaf changed
+  with the rename on 2026-11-22, the prefix staying because logolight.app stays the app's home).
+  1.4.0's settings are copied over on first launch by `LegacyName.moveSettings()`. Changing it again
+  is the same cost as it was then: Launch at Login and a placed Control Center control can't be
+  carried over, only the preferences can, and the user chose that once, not as a standing option.
 - **License**: MIT (chosen 2026-11-07); the repo went public with the 1.0.0 release. The website is
   in `site/` (Cloudflare Workers static assets, `logolight.app`). Donations go to
   buymeacoffee.com/arkon and never state an amount (the user's rule). On the site, the Apple
-  logo appears only inside LogoLight's own renders (the user's choice, given Apple's trademark
+  logo appears only inside the app's own renders (the user's choice, given Apple's trademark
   rules).
 
 ## Status
@@ -263,7 +314,7 @@ See `git log` for history. Done and verified on the MacBook:
 - The documented-command fallback with the admin dialog, plus the optional sudoers rule.
 - The `make install` flow.
 
-The menu's control panel (`Sources/LogoLight/ControlPanel.swift`) was asked for as "nice sliders
+The menu's control panel (`Sources/MacLogoControl/ControlPanel.swift`) was asked for as "nice sliders
 so it looks like an iOS app, keep it simple", then specified: "one slider for turn logo off, then
 the other sliders get greyed out, when its on then the other sliders are for the different
 effects". So "slider" meant iOS-style switches: one for the logo and one per effect (at most one
@@ -277,15 +328,21 @@ wide, measured:
 - The widest row is Heartbeat's: the text column starts at 40, the label needs 61 (13 pt; 64 with
   Bold Text), then at least 4, the switch 40 and 8 to the card's edge (the tiles' inset), so 153
   (156); plus the 6-point margins, 165 (168). "Backlight" (the user renamed "Apple Logo", and on 2026-11-10 renamed it again, to
-  "LogoLight", which fits: the renderer reports no truncated label) needs
-  56.5, Breathe 47.5, Pulse 33. The renderer reports no truncated label.
-- The menu's own items need 143 ("Launch at Login", "Quit LogoLight"), or 153 with
-  "Disable Password", so the panel sets the menu's width.
+  "LogoLight", and now "Mac Logo Control", which all fit) needs
+  56.5, Breathe 47.5, Pulse 33.
+- **The panel is no longer 170 wide.** Since the live view became the whole lid at Apple's own
+  proportions (2026-11-21), `PanelMetrics.liveViewWidth` (392) plus the insets sets it: 420 points,
+  `widthWithLiveView`, drawn 840 px at the renderer's scale 2. `minWidth` 172 is only the floor for
+  the states without a live view, and the menu's own items ("Disable Password" 106.5 pt with Bold
+  Text off, "Quit Mac Logo Control" 136.1 at the menu font's 13 pt, ~47 pt of state column and
+  margins) sit well inside it, so the panel still sets the menu's width. Redrawn and measured again
+  for the rename: the renderer reports no truncated label.
 - The switches are 40 × 24 with a round knob 20 across, about an iOS switch's proportions: the
   user chose them over a regular `NSSwitch`'s size on macOS 27 (54 × 24 with a 32 × 20 capsule
   knob, which would need a 179-point panel).
 
-The panel's order is the user's: the LogoLight switch (then called Backlight) first ("so its much easier to enable,
+The panel's order is the user's: the Mac Logo Control switch (called Backlight, then LogoLight,
+before the rename) first ("so its much easier to enable,
 disable it"), then the live view, then the brightness slider (its own card, with the Automatic switch above it:
 the logo follows the display's brightness, read through DisplayServices, which macOS keeps in step with
 the light around you), then the effects.
@@ -338,7 +395,7 @@ changed).
   takes every change.
 
 **Changed since the last look at the real menu** (drawn offscreen only; open the menu with
-`LOGOLIGHT_OPEN_MENU` when the user isn't working):
+`MACLOGOCONTROL_OPEN_MENU` when the user isn't working):
 - The switches' knob can also be dragged. Check that they're blue on the very first frame, and
   that a drag works inside the menu.
 - The menu opens on mouse-down. Check a quick click, press-drag-release onto an item, and that
@@ -350,7 +407,9 @@ changed).
   rejects a direct switch and it falls back to the dialog (`willPromptForPassword`). Without
   direct control, a flip that `sudo` makes (the rule is installed) leaves the menu open, with the
   switch disabled until it's done.
-- `pkill LogoLight` now quits cleanly (the logo returns to normal), and the make targets wait
+- `pkill -x "MacLogoControl|LogoLight"` now quits cleanly (the logo returns to normal) — the make
+  targets and livecheck match both names, so a LogoLight left in /Applications can't fight the new
+  build — and they wait
   for it to exit before opening the new build. One that's blocked (a password dialog is open)
   can't take the signal until it's answered, so after 2 s they kill it instead (checked with a
   stand-in process only).
@@ -359,7 +418,7 @@ changed).
   wake during which a display was unplugged.
 
 **The Control Center control** (2026-11-07, build 88): built, registered (`pluginkit -mAvvv -p
-com.apple.widgetkit-extension` lists `app.logolight.LogoLight.Controls`), and its port checked
+com.apple.widgetkit-extension` lists `app.logolight.MacLogoControl.Controls`), and its port checked
 against the installed app with a small client built from `ControlLink.swift`: state, off and on
 were answered in 2-3 ms, and the logo followed. A sandboxed test client could look the port up
 with the entitlement and couldn't without it. Not yet seen by the user: the control in Control
@@ -459,7 +518,7 @@ domain's `kPMSetClamshellSleepState`, with `PreventSystemSleep` and `PreventUser
 assertions, the three the probe held. A first build held `PreventSystemSleep` alone: the Mac then
 went into a dark wake when the lid closed ("Entering DarkWake state due to 'Clamshell Sleep'" in
 `pmset -g log`) and the logo stayed dark; the user: "I closed the lid, its not working...". The
-kernel keeps the setting after the process is gone, so the app starts a guard (`LogoLight
+kernel keeps the setting after the process is gone, so the app starts a guard (`MacLogoControl
 --lid-guard <pid>`, the same binary) that turns lid sleep back on when the app exits, however it
 ends; killing the app with SIGKILL made the guard exit (that it had reset the setting can't be read
 back). The assertions also hold off idle sleep on power while the option is on, which the user
@@ -467,7 +526,7 @@ wasn't asked about. Unplugged, it's all released (a Mac in a bag sleeps). `LidOb
 since the built-in display stays online and awake to CoreGraphics; `SystemHardware` counts it as
 off while the lid is closed, and `canLight` allows a closed lid with no display connected. The
 item's second line is "On power or a display" (160 points). The app logs lid events (`log show
---predicate 'subsystem == "app.logolight.LogoLight"'`). Codeman's own keep-awake (`keepAwake.lid`
+--predicate 'subsystem == "app.logolight.MacLogoControl"'`). Codeman's own keep-awake (`keepAwake.lid`
 in its `desktop.json`) does the same job while Codeman runs. 273 tests pass; an ad-hoc build is
 installed on the MacBook and holds the assertions. The probe's last step once left the logo dark
 with the lid open (docs/corebrightnessd.md: a client's DidSleep), which the user saw as "no logo on
@@ -480,7 +539,7 @@ second line). Still not seen: the lid opening again, unplugging with the lid clo
 whether `screensDidSleep` arrives there.
 
 **Morse code** (PR #1 from johnseth97, 2026-11-07, built on a Mac without the logo; merged
-2026-11-08): `MorseCode` (LogoLightCore) turns a message into
+2026-11-08): `MorseCode` (MacLogoControlCore) turns a message into
 `FadeStep`s with standard timing (dot 1 unit, dash 3, gaps 1/3/7, unit 0.2 s = 6 wpm), and
 `LogoAnimator.startMorse` plays them once or in a loop, in place of the effect, which comes back
 afterwards. Morse always flashes at full brightness: easing onto a level in between takes ≥ 0.15 s
@@ -503,8 +562,8 @@ had rises held back the full 0.5 s, so the app now has the display show a frame 
 dark (`onRiseFromDark`: the menu bar icon's opacity goes between 1 and 0.99, which can't be
 seen); with that, a looping SOS's gaps stayed within 0.17 units of their length. Effects get it
 too. Not yet watched by eye. Typing in the field inside the open menu was checked by the PR's
-author (2026-11-07, with `LOGOLIGHT_SIMULATE=1`) and works.
-`LOGOLIGHT_SIMULATE=1` (debug) runs the app against `SimulatedEmitterService`, a wall-clock
+author (2026-11-07, with `MACLOGOCONTROL_SIMULATE=1`) and works.
+`MACLOGOCONTROL_SIMULATE=1` (debug) runs the app against `SimulatedEmitterService`, a wall-clock
 stand-in for corebrightnessd, so the live view can be watched on any Mac.
 
 **Sound** (2026-11-09, asked for as "sync up the sound that is playing with the lighting"): a
@@ -528,7 +587,7 @@ panel renders show the row fits (no truncated label).
 
 **Lending the logo to Codeman** (2026-11-09, asked for by the user, who also makes Codeman): Codeman's
 Mac app blinks the logo with what its AI agents are doing, through the same `DisplayLogicalState`
-fades, and declined to while a process named LogoLight ran, so the two never fought. Now LogoLight
+fades, and declined to while a process named LogoLight ran, so the two never fought. Now the app
 steps aside instead: `CodemanLoan` (the contract, also kept in Codeman's
 `packages/desktop/src/logo.rs`) reads `~/Library/Application Support/Codeman/logo-fade`, which holds
 the blinker's process ID while it moves the logo; `LoanWatcher` looks every second and calls
@@ -536,9 +595,13 @@ the blinker's process ID while it moves the logo; `LoanWatcher` looks every seco
 since Codeman puts the logo back to normal for a moment between blinks. While lent, `isDisplayAwake`
 reads false, so every path that starts an effect or a fade only records the choice; a sleep, a wake,
 a launch and a quit write nothing; switching the logo off changes only the setting, with no fade,
-and Codeman stops when it sees that. `LogoLightStepsAsideForCodeman` (an integer, 1) in
-`Resources/Info.plist` is how Codeman tells this LogoLight from an older one, which it still leaves
-the logo to. Codeman waits longer than the watcher's interval after writing the file before it
+and Codeman stops when it sees that. A steps-aside key (an integer, 1) in `Resources/Info.plist` is
+how Codeman tells this app from one too old to step aside; since the rename there are two,
+`LogoLightStepsAsideForCodeman` and `MacLogoControlStepsAsideForCodeman`, so a Codeman from before
+the rename still reads one. Codeman finds the app by its old name and bundle ID, though, so until
+its side is changed over it treats a running Mac Logo Control as no app at all and takes the logo
+without waiting — `LoanWatcher` still pauses this app within a second of the marker appearing, but
+the polite hand-back (the wait before the first fade) is what the key buys. Codeman waits longer than the watcher's interval after writing the file before it
 first moves the logo. Tests: `LoanTests.swift` (244 passed on the Mac mini; four of them fail when
 lending doesn't pause or gate the writes). **Not checked on the MacBook**: no `tools/livecheck` run,
 and the handover with a real Codeman needs the Codeman side, which isn't released yet. Not decided:
