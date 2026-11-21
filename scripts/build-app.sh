@@ -49,6 +49,8 @@ fill Resources/Info.plist "$APP/Contents/Info.plist"
 # Drawn by scripts/make-icon.swift. With Xcode's actool, it also goes in an asset catalog
 # (CFBundleIconName), which newer parts of macOS, like Control Center's gallery, look for.
 cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
+# Apple's own lid shots, knocked out of their plate (scripts/make-lid-images.py): the live view's body.
+cp -R Resources/Lids "$APP/Contents/Resources/Lids"
 if ACTOOL="$(xcrun --find actool 2>/dev/null)"; then
     ASSETS="build/assets/Assets.xcassets"
     rm -rf build/assets

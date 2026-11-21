@@ -941,34 +941,29 @@ private final class LogoPreview: NSView {
     static let width: CGFloat = PanelMetrics.liveViewWidth
     static var height: CGFloat { (width / geometry(for: .sixteen).aspect).rounded() }
 
-    /// One lid's shape, as photographed edge to edge, all shares of the lid's height. Measured off
-    /// Apple's own lid shots of both sizes: the 14-inch is a shade squarer and carries the same-size
-    /// logo on a smaller lid; its corners are milled the same few millimetres, so they read larger.
+    /// One lid's shape, off the same Apple shots the lid is drawn from: its proportions, and how
+    /// tall the printed logo is on it. The 14-inch is a shade squarer and carries the same-size
+    /// logo on a smaller lid, so the mark is larger on it.
     private struct LidGeometry {
         let aspect: CGFloat
-        let corner: CGFloat
+        /// The printed logo's height, as a share of the lid's — the light's glow is sized by it.
         let mark: CGFloat
-        let lift: CGFloat
         /// The whole lid's size next to the 16-inch's, off Apple's dimensions (31.26 cm across,
         /// against its 35.57) — the 14-inch is drawn this much smaller inside the same frame.
         let scale: CGFloat
     }
     private static func geometry(for lid: MacLid) -> LidGeometry {
         switch lid {
-        case .fourteen: LidGeometry(aspect: 1.436, corner: 0.040, mark: 0.253, lift: 0.020, scale: 0.879)
-        case .sixteen: LidGeometry(aspect: 1.456, corner: 0.048, mark: 0.225, lift: 0.016, scale: 1)
+        case .fourteen: LidGeometry(aspect: 1.436, mark: 0.216, scale: 0.879)
+        case .sixteen: LidGeometry(aspect: 1.456, mark: 0.192, scale: 1)
         }
     }
-    private let lid = CAGradientLayer()
-    /// The logo as it looks unlit: polished metal in the lid, catching the light above. Drawn to an
-    /// image (see `markImage`) rather than layered gradients, so the reflections can be composed.
-    private let mark = CALayer()
-    /// Its light, faded in by the glow.
+    /// The lid is Apple's own shot of it, knocked out of its plate (see `scripts/make-lid-images.py`)
+    /// — anodised aluminium, machined edges and the unlit mark, all exactly as Apple photographs it.
+    /// The logo's light is the only thing drawn over it.
+    private let lid = CALayer()
+    /// The logo's light, faded in by the glow, lined up with the mark printed in the shot.
     private let logo = CALayer()
-    /// The light the hinge edge catches, as the lid shots show it — a hairline fading down from the
-    /// top edge. The front edge needs no line of its own: Apple's shots show the lid darkening into
-    /// it smoothly, its machined edge a single brighter row — the lid's own border, not a band.
-    private let topRim = CAGradientLayer()
     /// How tall the lid was last drawn at, which finish, and which lid's shape, so all are only
     /// set when they change.
     private var drawnHeight: CGFloat = 0
@@ -980,18 +975,10 @@ private final class LogoPreview: NSView {
         drawnLid = lidSize
         super.init(frame: .zero)
         wantsLayer = true
-        lid.cornerCurve = .continuous
+        lid.contentsGravity = .resize
         layer?.addSublayer(lid)
-        for layer in [mark, logo, topRim] as [CALayer] {
-            lid.addSublayer(layer)
-        }
-        for layer in [mark, logo] as [CALayer] {
-            layer.contentsGravity = .resizeAspect
-        }
-        for edge in [topRim] as [CAGradientLayer] {
-            edge.startPoint = CGPoint(x: 0.5, y: 0)
-            edge.endPoint = CGPoint(x: 0.5, y: 1)
-        }
+        lid.addSublayer(logo)
+        logo.contentsGravity = .resize
         logo.shadowColor = NSColor.white.cgColor
         logo.shadowOffset = .zero
         setFinish(finish)
@@ -1002,11 +989,13 @@ private final class LogoPreview: NSView {
         setAccessibilityLabel("Live view of the Apple logo")
     }
 
-    /// Shows the other lid's shape. The frame keeps the 16-inch lid's size whatever the lid, so this
-    /// only asks for a layout; `layout()` notices the shape changed even though nothing resized.
+    /// Shows the other lid: its shot and its shape. The frame keeps the 16-inch lid's size whatever
+    /// the lid, so this asks for a layout as well — `layout()` notices the shape changed even
+    /// though nothing resized.
     func setLid(_ lid: MacLid) {
         guard lid != drawnLid else { return }
         drawnLid = lid
+        repaintLid()
         needsLayout = true
     }
 
@@ -1024,156 +1013,63 @@ private final class LogoPreview: NSView {
                           height: (bounds.width * g.scale / g.aspect).rounded())
         let height = size.height
         withoutAnimation {
-            lid.frame = NSRect(x: (bounds.width - size.width) / 2,
-                               y: (frameHeight - size.height) / 2,
-                               width: size.width, height: size.height)
-            // The corner Apple mills: the same few millimetres on both lids, as a quarter circle.
-            lid.cornerRadius = height * g.corner
-            lid.borderWidth = height * 0.006
-            // The mark on a real lid stands about a fifth of the lid's way up, its centre just
-            // above the middle; the smaller lid carries the same-size logo, so it's larger on it.
-            let logoSize = (height * g.mark).rounded()
-            let logoFrame = NSRect(x: (size.width - logoSize) / 2,
-                                   y: (size.height - logoSize) / 2 - height * g.lift,
-                                   width: logoSize, height: logoSize)
-            mark.frame = logoFrame
-            logo.frame = logoFrame
-            logo.shadowRadius = logoSize * 0.30
-            // The hinge light is a hairline hugging the top edge, a percent of the lid's height —
-            // 2–3 px on a lid the size of Apple's shots.
-            let rim = height * 0.012
-            topRim.frame = NSRect(x: 0, y: 0, width: size.width, height: rim)
-            // The mark and the light are images made at the logo's size: at another height they're remade.
-            logo.contents = Self.logoImage(.white, size: logoSize)
-            if let finish = drawnFinish { repaintMark(finish: finish) }
+            let lidFrame = NSRect(x: (bounds.width - size.width) / 2,
+                                  y: (frameHeight - size.height) / 2,
+                                  width: size.width, height: size.height)
+            lid.frame = lidFrame
+            // The light is the printed mark's own shape, cut from the same shot and kept on the
+            // shot's own canvas — so it rides the lid frame exactly, logo centred where the
+            // photograph put it, at any size the lid is drawn at.
+            logo.frame = CGRect(origin: .zero, size: lidFrame.size)
+            // Its bloom, sized as on a real lid: as wide as the mark is tall, a third of it.
+            logo.shadowRadius = height * g.mark * 0.30
         }
     }
 
-    /// Paints the lid in `finish`, keeping the logo's light as it is: anodised aluminium, with a faint
-    /// sheen toward the top, a fine machined edge, and the unlit mark in the metal.
+    /// Shows the lid in `finish` — another shot, nothing else about the live view changes.
     func setFinish(_ finish: MacFinish) {
         guard finish != drawnFinish else { return }
         drawnFinish = finish
-        // Measured off Apple's own lid shots of the 14 and 16-inch (identical per finish), top edge
-        // to bottom edge: silver 0.89→0.60, space black 0.38→0.145. The hinge edge catches the
-        // light (strongly on space black, faintly on silver). The front edge is only the lid's own
-        // border: a brighter row on space black, a darker one on silver — the shots show the body
-        // darkening into it with nothing banded on top.
-        let (top, bottom, edge, rim, markOpacity): (NSColor, NSColor, NSColor, NSColor, Float) =
-        switch finish {
-        case .spaceBlack:
-            (NSColor(srgbRed: 0.38, green: 0.38, blue: 0.39, alpha: 1),
-             NSColor(srgbRed: 0.145, green: 0.145, blue: 0.155, alpha: 1),
-             NSColor(white: 1, alpha: 0.14),
-             NSColor(white: 1, alpha: 0.30), 1)
-        case .silver:
-            (NSColor(srgbRed: 0.89, green: 0.895, blue: 0.90, alpha: 1),
-             NSColor(srgbRed: 0.60, green: 0.605, blue: 0.62, alpha: 1),
-             NSColor(white: 0, alpha: 0.16),
-             NSColor(white: 1, alpha: 0.10), 1)
-        }
+        repaintLid()
+    }
+
+    /// Puts the current lid and finish's shot on the layer, with its mark — the light's shape —
+    /// over it. Before the finish is known there's nothing to show, and `setFinish` paints it
+    /// once it is.
+    private func repaintLid() {
+        guard let finish = drawnFinish else { return }
         withoutAnimation {
-            lid.colors = [top.cgColor, bottom.cgColor]
-            lid.borderColor = edge.cgColor
-            topRim.colors = [rim.cgColor, NSColor.clear.cgColor]
-            repaintMark(finish: finish)
-            markBaseOpacity = markOpacity
-            // A logo that's already lit keeps it that way: the metal shows only as far as it's dark.
-            mark.opacity = markOpacity * Float(1 - (shownGlow ?? 0))
+            lid.contents = Self.shot(size: drawnLid, finish: finish, mark: false)
+            logo.contents = Self.shot(size: drawnLid, finish: finish, mark: true)
         }
     }
 
-    /// The scale reflections are drawn at: the screen's, or the renderer window's.
-    private var pixelScale: CGFloat { max(window?.backingScaleFactor ?? 2, 2) }
+    /// The lid shots and the logo's shapes, each loaded the first time it's asked for and kept:
+    /// every menu shows one pair, and the tabs move between them.
+    private static var shots: [String: NSImage] = [:]
 
-    /// Redraws the mark's image at the size and scale it's shown at. Before the first layout there's
-    /// no size, and `layout()` paints it once there is.
-    private func repaintMark(finish: MacFinish) {
-        let logoSize = mark.frame.height
-        guard logoSize > 0 else { return }
-        let scale = pixelScale
-        mark.contentsScale = scale
-        mark.contents = Self.markImage(finish: finish, size: logoSize, scale: scale)
+    /// The lid's shot, or the shape of the logo printed on it (`mark`) — the same canvas each time,
+    /// which is what lines the light up with the print.
+    private static func shot(size: MacLid, finish: MacFinish, mark: Bool) -> NSImage? {
+        let name = "lid-\(size == .fourteen ? "14" : "16")inch-\(finish == .silver ? "silver" : "spaceblack")"
+            + (mark ? "-mark" : "")
+        if let shot = shots[name] { return shot }
+        guard let url = shotURL(named: name), let shot = NSImage(contentsOf: url) else { return nil }
+        shots[name] = shot
+        return shot
     }
 
-    /// Paints the unlit mark as Apple's own lid shots show it: polished black glass. The mark is
-    /// nearly black throughout, with a faint grey sheen above a shallow diagonal running up from
-    /// its lower left to the top of its right side — hard-edged, brighter towards the body's crown
-    /// and fading to black towards the foot, with the leaf catching the sheen too.
-    private static func markImage(finish: MacFinish, size: CGFloat, scale: CGFloat) -> NSImage? {
-        let pixels = max(Int((size * scale).rounded()), 8)
-        let side = CGFloat(pixels)
-        let rect = CGRect(x: 0, y: 0, width: side, height: side)
-        guard let space = CGColorSpace(name: CGColorSpace.sRGB),
-              let maskContext = CGContext(data: nil, width: pixels, height: pixels, bitsPerComponent: 8,
-                                          bytesPerRow: 0, space: space,
-                                          bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue),
-              let out = CGContext(data: nil, width: pixels, height: pixels, bitsPerComponent: 8,
-                                  bytesPerRow: 0, space: space,
-                                  bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
-        // The logo's shape as a stencil, drawn as large as the canvas so its edges stay crisp.
-        guard let symbol = NSImage(systemSymbolName: "apple.logo", accessibilityDescription: nil)
-                ?? NSImage(systemSymbolName: "lightbulb.fill", accessibilityDescription: nil),
-              let shape = symbol.withSymbolConfiguration(
-                NSImage.SymbolConfiguration(pointSize: side, weight: .regular)) else { return nil }
-        let box = aspectFit(shape.size, in: side)  // as the layers fit it: centred, undistorted
-        NSGraphicsContext.saveGraphicsState()
-        NSGraphicsContext.current = NSGraphicsContext(cgContext: maskContext, flipped: false)
-        shape.draw(in: box)
-        NSGraphicsContext.restoreGraphicsState()
-        guard let stencil = maskContext.makeImage() else { return nil }
-        out.clip(to: rect, mask: stencil)
-
-        // Measured off the lid shots: black side ~0.01, sheen peaking at the body's crown —
-        // 0.24 grey on silver, 0.17 on space black — and fading down into the black.
-        let glossy: (black: CGFloat, low: CGFloat, crown: CGFloat)
-        glossy = switch finish {
-        case .spaceBlack: (0.01, 0.03, 0.17)
-        case .silver: (0.01, 0.04, 0.235)
+    /// A shot from the app's `Lids` folder, or, for a debug binary run out of `.build` (the picture
+    /// renderer, the tests), from the checkout it was built in.
+    private static func shotURL(named name: String) -> URL? {
+        if let url = Bundle.main.url(forResource: name, withExtension: "png", subdirectory: "Lids") { return url }
+        var dir = Bundle.main.bundleURL
+        for _ in 0..<5 {
+            dir = dir.deletingLastPathComponent()
+            let url = dir.appendingPathComponent("Resources/Lids/\(name).png")
+            if FileManager.default.fileExists(atPath: url.path) { return url }
         }
-        out.setFillColor(NSColor(white: glossy.black, alpha: 1).cgColor)
-        out.fill(rect)
-        // The sheen is everything above the diagonal, which runs up from the lower left of the
-        // mark's box to the top of its right side — so the crown and the leaf fall in it, and
-        // the two feet fall in the black below.
-        out.saveGState()
-        out.beginPath()
-        out.move(to: CGPoint(x: box.minX + box.width * 0.06, y: box.minY + box.height * 0.12))
-        out.addLine(to: CGPoint(x: box.minX + box.width * 0.86, y: box.minY + box.height * 0.66))
-        out.addLine(to: CGPoint(x: box.maxX, y: box.maxY))
-        out.addLine(to: CGPoint(x: box.minX, y: box.maxY))
-        out.closePath()
-        out.clip()
-        if let sheen = CGGradient(colorsSpace: space,
-                                  colors: [NSColor(white: glossy.low, alpha: 1).cgColor,
-                                           NSColor(white: glossy.crown * 0.62, alpha: 1).cgColor,
-                                           NSColor(white: glossy.crown, alpha: 1).cgColor,
-                                           NSColor(white: glossy.crown * 0.8, alpha: 1).cgColor] as CFArray,
-                                  locations: [0, 0.45, 0.78, 1]) {
-            out.drawLinearGradient(sheen, start: CGPoint(x: 0, y: box.minY), end: CGPoint(x: 0, y: box.maxY),
-                                   options: [.drawsBeforeStartLocation, .drawsAfterEndLocation])
-        }
-        out.restoreGState()
-        guard let image = out.makeImage() else { return nil }
-        return NSImage(cgImage: image, size: NSSize(width: size, height: size))
-    }
-
-    /// The rect a `size` image takes inside a square of `side`, centred and undistorted — the way
-    /// `contentsGravity = .resizeAspect` places it.
-    private static func aspectFit(_ size: NSSize, in side: CGFloat) -> CGRect {
-        guard size.width > 0, size.height > 0 else { return CGRect(x: 0, y: 0, width: side, height: side) }
-        let scale = min(side / size.width, side / size.height)
-        let width = size.width * scale, height = size.height * scale
-        return CGRect(x: (side - width) / 2, y: (side - height) / 2, width: width, height: height)
-    }
-
-    /// The Apple logo in `color`, at the size it sits on the lid.
-    private static func logoImage(_ color: NSColor, size: CGFloat) -> NSImage? {
-        let symbol = NSImage(systemSymbolName: "apple.logo", accessibilityDescription: nil)
-            ?? NSImage(systemSymbolName: "lightbulb.fill", accessibilityDescription: nil)
-        return symbol?.withSymbolConfiguration(
-            NSImage.SymbolConfiguration(pointSize: max(size, 1), weight: .regular)
-                .applying(NSImage.SymbolConfiguration(paletteColors: [color])))
+        return nil
     }
 
     @available(*, unavailable)
@@ -1181,21 +1077,18 @@ private final class LogoPreview: NSView {
 
     override var isFlipped: Bool { true }
 
-    /// The glow last drawn, and how solid the unlit mark is before the light fades it out.
+    /// The glow last drawn.
     private var shownGlow: Double?
-    private var markBaseOpacity: Float = 1
 
     /// Called on every frame while the menu is open. A change too small to see isn't drawn, so a
-    /// steady logo costs nothing.
+    /// steady logo costs nothing. The shot underneath keeps its printed mark: the light rising
+    /// over it is what reads as the logo coming on.
     func show(glow: Double) {
         if let shownGlow, abs(glow - shownGlow) < 0.002 { return }
         shownGlow = glow
         withoutAnimation {
             logo.opacity = Float(glow)
             logo.shadowOpacity = Float(glow)
-            // Lit, what's seen is the light, not the polished metal behind it: the mark fades out with it,
-            // so a logo at half brightness still reads as lit rather than as dark metal with a sheen.
-            mark.opacity = markBaseOpacity * Float(1 - glow)
         }
     }
 
@@ -1555,19 +1448,18 @@ private extension LogoPreview {
     /// The live view's size without the panel around it: just the lid, as the panel draws it.
     static var renderedLidSize: NSSize { NSSize(width: width, height: height) }
 
-    /// Where the lid is drawn in the view (centred at the top, as `layout()` places it).
+    /// Where the lid is drawn in the view (centred, as `layout()` places it).
     var renderedLidFrame: NSRect {
-        let aspect = Self.geometry(for: drawnLid).aspect
-        let size = NSSize(width: (bounds.height * aspect).rounded(), height: bounds.height)
-        return NSRect(x: (bounds.width - size.width) / 2, y: 0, width: size.width, height: size.height)
+        let g = Self.geometry(for: drawnLid)
+        let size = NSSize(width: (bounds.width * g.scale).rounded(),
+                          height: (bounds.width * g.scale / g.aspect).rounded())
+        return NSRect(x: (bounds.width - size.width) / 2, y: (bounds.height - size.height) / 2,
+                      width: size.width, height: size.height)
     }
 
-    /// Leaves only the logo's light, fully lit, with or without its glow: no lid and no unlit mark.
+    /// Leaves only the logo's light, fully lit, with or without its glow: no lid at all.
     func showLightAlone(withGlow: Bool) {
-        lid.colors = nil
-        lid.borderWidth = 0
-        topRim.isHidden = true
-        mark.isHidden = true
+        lid.contents = nil
         logo.opacity = 1
         logo.shadowOpacity = withGlow ? 1 : 0
     }
