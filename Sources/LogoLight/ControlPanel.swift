@@ -578,27 +578,38 @@ private struct PanelContent: View {
 
     private var morseCard: some View {
         PanelCard {
-            HStack(spacing: PanelMetrics.labelSpacing + 2) {
+            VStack(spacing: 6) {
                 TextField("Message", text: Binding(get: { model.morseText }, set: { model.editMorse($0) }))
                     .textFieldStyle(.roundedBorder)
                     .font(.system(size: 12))
                     .lineLimit(1)
                     .onSubmit { model.play() }
                     .accessibilityLabel("Morse code message")
-                    .help(model.morseNotation)
 
-                Button {
-                    model.play()
-                } label: {
-                    Image(systemName: model.isSendingMorse ? "stop.fill" : "play.fill")
+                // The code the message becomes, shown as it's typed, with the play button at its end.
+                HStack(spacing: PanelMetrics.labelSpacing + 2) {
+                    Text(Self.dots(model.morseNotation))
+                        .font(.system(size: 11, weight: .medium, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.head)
+                        .accessibilityLabel("Morse code: \(model.morseNotation)")
+
+                    Spacer(minLength: PanelMetrics.labelSpacing)
+
+                    Button {
+                        model.play()
+                    } label: {
+                        Image(systemName: model.isSendingMorse ? "stop.fill" : "play.fill")
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(!model.canPlay)
+                    .help(model.isSendingMorse ? "Stop" : "Play")
+                    .accessibilityLabel("Play Morse code")
                 }
-                .buttonStyle(.bordered)
-                .disabled(!model.canPlay)
-                .help(model.isSendingMorse ? "Stop" : "Play")
-                .accessibilityLabel("Play Morse code")
             }
             .padding(.horizontal, PanelMetrics.iconInset)
-            .frame(height: PanelMetrics.rowHeight)
+            .padding(.vertical, 7)
             .disabled(!state.canAdjust)
             // A disabled field only greys a little of itself: faded, as the rows around it are, it reads
             // as out of reach at a glance.
@@ -618,6 +629,12 @@ private struct PanelContent: View {
                     .accessibilityLabel("Repeat Morse code")
             }
         }
+    }
+
+    /// The notation as it's shown under the field: dots raised to middle dots, which read as dots at
+    /// that size where a full stop on the baseline would not.
+    private static func dots(_ notation: String) -> String {
+        notation.replacingOccurrences(of: ".", with: "\u{B7}")
     }
 }
 
