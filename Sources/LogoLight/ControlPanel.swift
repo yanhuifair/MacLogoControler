@@ -319,7 +319,7 @@ private struct PanelContent: View {
                 PanelCard {
                     VStack(spacing: 10) {
                         LogoPreviewView(preview: preview, finish: model.finish)
-                            .frame(height: LogoPreview.lidSize.height)
+                            .frame(height: LogoPreview.height)
                             .frame(maxWidth: .infinity)
                         // Silver and space black, as the MacBook Pro comes: the one this Mac is, unless the
                         // user would rather see the other.
@@ -685,35 +685,34 @@ private extension View {
 /// A live view of the logo: the back of the MacBook Pro in its own finish (space black or silver) and
 /// in the lid's real proportions, with the logo glowing on it.
 private final class LogoPreview: NSView {
-    /// The 14-inch MacBook Pro's lid is 31.3 × 22.1 cm. The panel's row of the live view is this tall.
-    static let lidSize = NSSize(width: 116, height: 82)
-    /// A little larger than on the real lid, so the glow reads at this size.
-    private static let logoSize = NSSize(width: 26, height: 26)
+    /// The 14-inch MacBook Pro's lid is 31.3 × 22.1 cm, and the live view is drawn to that shape at
+    /// whatever height it's given.
+    static let aspectRatio: CGFloat = 31.3 / 22.1
+    /// How tall the panel draws the live view.
+    static let height: CGFloat = 200
+    /// Its width at that height.
+    static var width: CGFloat { (height * aspectRatio).rounded() }
 
     private let lid = CAGradientLayer()
     /// The logo as it looks unlit: a faint polished shape in the aluminium.
     private let mark = CALayer()
     /// Its light, faded in by the glow.
     private let logo = CALayer()
+    /// How tall the lid was last drawn at, and in which finish, so both are only set when they change.
+    private var drawnHeight: CGFloat = 0
+    private var drawnFinish: MacFinish?
 
     init(finish: MacFinish) {
         super.init(frame: .zero)
         wantsLayer = true
-        heightAnchor.constraint(equalToConstant: Self.lidSize.height).isActive = true
-
-        lid.cornerRadius = 7
         lid.cornerCurve = .continuous
-        lid.borderWidth = 0.5
         layer?.addSublayer(lid)
-
         for layer in [mark, logo] {
             layer.contentsGravity = .resizeAspect
             lid.addSublayer(layer)
         }
-        logo.contents = Self.logoImage(.white)
         logo.shadowColor = NSColor.white.cgColor
         logo.shadowOffset = .zero
-        logo.shadowRadius = 7
         setFinish(finish)
         show(glow: 0)
 
@@ -722,11 +721,33 @@ private final class LogoPreview: NSView {
         setAccessibilityLabel("Live view of the Apple logo")
     }
 
+    override func layout() {
+        super.layout()
+        let height = bounds.height
+        guard height > 0, height != drawnHeight else { return }
+        drawnHeight = height
+        let size = NSSize(width: (height * Self.aspectRatio).rounded(), height: height)
+        withoutAnimation {
+            lid.frame = NSRect(x: (bounds.width - size.width) / 2, y: 0, width: size.width, height: size.height)
+            lid.cornerRadius = height * 0.085
+            lid.borderWidth = height * 0.006
+            logo.shadowRadius = height * 0.085
+            let logoSize = (height * 0.317).rounded()
+            let logoFrame = NSRect(x: (size.width - logoSize) / 2, y: (size.height - logoSize) / 2,
+                                   width: logoSize, height: logoSize)
+            mark.frame = logoFrame
+            logo.frame = logoFrame
+            // The mark and the light are images made at the logo's size: at another height they're remade.
+            logo.contents = Self.logoImage(.white, size: logoSize)
+            if let color = drawnFinish { mark.contents = Self.logoImage(Self.markColor(color), size: logoSize) }
+        }
+    }
+
     /// Paints the lid in `finish`, keeping the logo's light as it is: anodised aluminium, with a faint
     /// sheen toward the top, a fine machined edge, and the unlit mark in the metal.
     func setFinish(_ finish: MacFinish) {
-        guard finish != shownFinish else { return }
-        shownFinish = finish
+        guard finish != drawnFinish else { return }
+        drawnFinish = finish
         let (top, bottom, edge, markColor, markOpacity): (NSColor, NSColor, NSColor, NSColor, Float) = switch finish {
         case .spaceBlack:
             (NSColor(srgbRed: 0.17, green: 0.17, blue: 0.18, alpha: 1),
@@ -740,17 +761,22 @@ private final class LogoPreview: NSView {
         withoutAnimation {
             lid.colors = [top.cgColor, bottom.cgColor]
             lid.borderColor = edge.cgColor
-            mark.contents = Self.logoImage(markColor)
+            mark.contents = Self.logoImage(markColor, size: (drawnHeight * 0.317).rounded())
             mark.opacity = markOpacity
         }
     }
 
+    /// The colour the unlit mark has in `finish`: a faint polished shape in the metal.
+    private static func markColor(_ finish: MacFinish) -> NSColor {
+        finish == .silver ? .black : .white
+    }
+
     /// The Apple logo in `color`, at the size it sits on the lid.
-    private static func logoImage(_ color: NSColor) -> NSImage? {
+    private static func logoImage(_ color: NSColor, size: CGFloat) -> NSImage? {
         let symbol = NSImage(systemSymbolName: "apple.logo", accessibilityDescription: nil)
             ?? NSImage(systemSymbolName: "lightbulb.fill", accessibilityDescription: nil)
         return symbol?.withSymbolConfiguration(
-            NSImage.SymbolConfiguration(pointSize: logoSize.height, weight: .regular)
+            NSImage.SymbolConfiguration(pointSize: max(size, 1), weight: .regular)
                 .applying(NSImage.SymbolConfiguration(paletteColors: [color])))
     }
 
@@ -759,21 +785,8 @@ private final class LogoPreview: NSView {
 
     override var isFlipped: Bool { true }
 
-    override func layout() {
-        super.layout()
-        let lidSize = Self.lidSize, logoSize = Self.logoSize
-        withoutAnimation {
-            lid.frame = NSRect(x: (bounds.width - lidSize.width) / 2, y: 0, width: lidSize.width, height: lidSize.height)
-            let logoFrame = NSRect(x: (lidSize.width - logoSize.width) / 2, y: (lidSize.height - logoSize.height) / 2,
-                                   width: logoSize.width, height: logoSize.height)
-            mark.frame = logoFrame
-            logo.frame = logoFrame
-        }
-    }
-
-    /// The glow last drawn, and the finish the lid is painted in.
+    /// The glow last drawn.
     private var shownGlow: Double?
-    private var shownFinish: MacFinish?
 
     /// Called on every frame while the menu is open. A change too small to see isn't drawn, so a
     /// steady logo costs nothing.
@@ -1139,12 +1152,13 @@ enum PanelRenderer {
 }
 
 private extension LogoPreview {
-    /// The live view's size without the panel around it: just the lid.
-    static var renderedLidSize: NSSize { lidSize }
+    /// The live view's size without the panel around it: just the lid, as the panel draws it.
+    static var renderedLidSize: NSSize { NSSize(width: width, height: height) }
 
     /// Where the lid is drawn in the view (centred at the top, as `layout()` places it).
     var renderedLidFrame: NSRect {
-        NSRect(x: (bounds.width - Self.lidSize.width) / 2, y: 0, width: Self.lidSize.width, height: Self.lidSize.height)
+        let size = NSSize(width: (bounds.height * Self.aspectRatio).rounded(), height: bounds.height)
+        return NSRect(x: (bounds.width - size.width) / 2, y: 0, width: size.width, height: size.height)
     }
 
     /// Leaves only the logo's light, fully lit, with or without its glow: no lid and no unlit mark.
