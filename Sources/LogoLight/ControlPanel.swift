@@ -341,21 +341,20 @@ private struct PanelContent: View {
             }
 
             if state.isSupported {
-                // The live view, then the finish picker under it in the tabs' own bar — outside the card,
-                // so the bar isn't a second background inside one.
-                VStack(spacing: PanelMetrics.headerToCard) {
-                    PanelCard {
+                PanelCard {
+                    VStack(spacing: 10) {
                         LogoPreviewView(preview: preview, finish: model.finish)
                             .frame(height: LogoPreview.height)
                             .frame(maxWidth: .infinity)
-                            .padding(.vertical, 9)
+                        // Silver and space black, as the MacBook Pro comes: the one this Mac is, unless the
+                        // user would rather see the other. In the tabs' bar, where the picker always was.
+                        OptionTabs(options: [
+                            OptionTabs<MacFinish>.Option(value: .silver, title: "Silver"),
+                            OptionTabs<MacFinish>.Option(value: .spaceBlack, title: "Space Black"),
+                        ], selection: model.finish, choose: { model.setFinish($0) })
+                        .padding(.horizontal, PanelMetrics.iconInset)
                     }
-                    // Silver and space black, as the MacBook Pro comes: the one this Mac is, unless the
-                    // user would rather see the other.
-                    OptionTabs(options: [
-                        OptionTabs<MacFinish>.Option(value: .silver, title: "Silver"),
-                        OptionTabs<MacFinish>.Option(value: .spaceBlack, title: "Space Black"),
-                    ], selection: model.finish, choose: { model.setFinish($0) })
+                    .padding(.vertical, 9)
                 }
             }
 
