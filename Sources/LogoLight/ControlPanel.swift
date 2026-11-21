@@ -149,8 +149,6 @@ private enum PanelMetrics {
     /// The corners of the cards: rounder than before, as macOS 26 and later draw them. The tabs sit in
     /// one too, and their lozenge is inset by the bar's padding, so it's that much tighter.
     static let cardRadius: CGFloat = 13
-    /// The panel's own corners, behind everything in it.
-    static let panelRadius: CGFloat = 12
     static let tabInset: CGFloat = 3
     static let tabRadius: CGFloat = cardRadius - tabInset
     /// Between one group and the next group's header, and between a header and its card.
@@ -330,8 +328,6 @@ private struct PanelContent: View {
     let model: PanelModel
     let preview: LogoPreview
 
-    @Environment(\.colorScheme) private var colorScheme
-
     private var state: PanelState { model.state }
     private var greyed: Double { PanelMetrics.greyedAlpha }
     private var greying: Animation { .easeInOut(duration: PanelMetrics.greying) }
@@ -435,12 +431,8 @@ private struct PanelContent: View {
         .padding(.horizontal, PanelMetrics.inset)
         .frame(minWidth: state.isSupported ? PanelMetrics.widthWithLiveView : PanelMetrics.minWidth,
                alignment: .top)
-        // A surface of its own: a menu's material takes its brightness from what's behind it, and over a
-        // bright desktop white text and pale cards would wash out against it.
-        .background {
-            RoundedRectangle(cornerRadius: PanelMetrics.panelRadius, style: .continuous)
-                .fill(Color(nsColor: .windowBackgroundColor).opacity(colorScheme == .dark ? 0.55 : 0.62))
-        }
+
+
     }
 
     // MARK: - The brightness, the battery and the charging light
