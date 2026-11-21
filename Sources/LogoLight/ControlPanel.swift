@@ -27,7 +27,7 @@ final class ControlPanel: NSView {
     var onMorseTextChanged: ((String) -> Void)?
 
     /// As wide as it has to be for the menu's own items (they need 153 with Disable Password) and no
-    /// wider: the longest label, "Heartbeat" (61 pt at 13 pt, 64 with Bold Text), fits between its tile and
+    /// wider: the longest label, "Heartbeat" (61 pt at 13 pt, 64 with Bold Text), fits between its icon and
     /// its switch, which leave it 72.
     static let width = PanelMetrics.width
 
@@ -123,11 +123,11 @@ private enum PanelMetrics {
     static let textIndent: CGFloat = 12
     /// A row: as tall as a row in System Settings' lists, a little tighter for a menu.
     static let rowHeight: CGFloat = 36
-    /// Where row text starts inside a card, and where the icon tiles start, and their size.
+    /// Where row text starts inside a card, and where the row icons start, and the width they're given.
     static let textColumn: CGFloat = 40
-    static let tileInset: CGFloat = 8
-    static let tileSize: CGFloat = 24
-    /// How far a control sits from the card's edge (the same as the tiles), and the least room between it
+    static let iconInset: CGFloat = 8
+    static let iconWidth: CGFloat = 24
+    /// How far a control sits from the card's edge (the same as the icons), and the least room between it
     /// and its label. A hairline between rows stops this far short of the trailing edge too.
     static let controlInset: CGFloat = 8
     static let labelSpacing: CGFloat = 4
@@ -276,7 +276,7 @@ private struct PanelContent: View {
     var body: some View {
         VStack(spacing: PanelMetrics.spacing) {
             PanelCard {
-                PanelRow(title: "LogoLight", tile: .init(symbol: "lightbulb.fill", color: .systemOrange),
+                PanelRow(title: "LogoLight", icon: .init(symbol: "lightbulb.fill"),
                          isDimmed: !state.isSupported) {
                     Toggle("Apple logo backlight", isOn: Binding(get: { model.isOn }, set: { model.flipLogo($0) }))
                         .labelsHidden()
@@ -332,7 +332,7 @@ private struct PanelContent: View {
                 Image(systemName: "sun.min.fill")
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
-                    .frame(width: PanelMetrics.tileSize)
+                    .frame(width: PanelMetrics.iconWidth)
                     .opacity(state.canChangeBrightness ? 1 : greyed)
                 Slider(value: Binding(get: { model.brightness }, set: { model.setBrightness($0) }),
                        in: 0...1, onEditingChanged: { model.dragBrightness($0) })
@@ -348,14 +348,14 @@ private struct PanelContent: View {
                     .frame(width: 16)
                     .opacity(state.canChangeBrightness ? 1 : greyed)
             }
-            .padding(.leading, PanelMetrics.tileInset)
+            .padding(.leading, PanelMetrics.iconInset)
             .padding(.trailing, PanelMetrics.inset + 4)
             .frame(height: PanelMetrics.rowHeight)
             .animation(greying, value: state.canChangeBrightness)
 
             RowSeparator()
 
-            PanelRow(title: "Battery", tile: .init(symbol: "battery.75percent", color: .systemGreen),
+            PanelRow(title: "Battery", icon: .init(symbol: "battery.75percent"),
                      isGreyed: !state.canAdjust,
                      help: "The logo shows the battery's charge: normal brightness when it's full, dimmer as it runs down.") {
                 Toggle("Brightness follows battery",
@@ -367,7 +367,7 @@ private struct PanelContent: View {
 
             RowSeparator()
 
-            PanelRow(title: "Charging", tile: .init(symbol: "bolt.fill", color: .systemYellow),
+            PanelRow(title: "Charging", icon: .init(symbol: "bolt.fill"),
                      isGreyed: !state.canAdjust,
                      help: "While the battery charges, the logo breathes like the old MacBook sleep light, then goes back to your effect.") {
                 Toggle("Breathe while charging",
@@ -386,8 +386,7 @@ private struct PanelContent: View {
         return PanelCard {
             ForEach(Array(effects.enumerated()), id: \.element) { index, effect in
                 if index > 0 { RowSeparator() }
-                PanelRow(title: effect.title, tile: .init(symbol: Self.symbolName(for: effect),
-                                                         color: Self.color(for: effect)),
+                PanelRow(title: effect.title, icon: .init(symbol: Self.symbolName(for: effect)),
                          isGreyed: !state.canAdjust,
                          help: effect == .sound ? "The logo glows with the sound your Mac is playing: brighter as "
                              + "it gets louder, peaking at your brightness. macOS asks once to let LogoLight hear it." : nil) {
@@ -431,7 +430,7 @@ private struct PanelContent: View {
                 .help("Repeat until stopped")
                 .accessibilityLabel("Repeat Morse code")
             }
-            .padding(.horizontal, PanelMetrics.tileInset)
+            .padding(.horizontal, PanelMetrics.iconInset)
             .frame(height: PanelMetrics.rowHeight)
             .disabled(!state.canAdjust)
         }
@@ -449,15 +448,6 @@ private struct PanelContent: View {
         }
     }
 
-    private static func color(for effect: LogoEffect) -> NSColor {
-        switch effect {
-        case .none: .systemGray
-        case .breathe: .systemTeal
-        case .pulse: .systemBlue
-        case .heartbeat: .systemRed
-        case .sound: .systemPurple
-        }
-    }
 }
 
 /// A rounded group of rows on glass, as System Settings has them.
@@ -474,7 +464,7 @@ private struct PanelCard<Content: View>: View {
 /// A row: its icon, its label, and its control at the trailing edge.
 private struct PanelRow<Control: View>: View {
     let title: String
-    let tile: PanelTile
+    let icon: PanelSymbol
     var isDimmed = false
     /// Whether it's out of reach for now (the logo is off): faded, and its control takes no clicks.
     var isGreyed = false
@@ -482,17 +472,17 @@ private struct PanelRow<Control: View>: View {
     @ViewBuilder var control: Control
 
     var body: some View {
-        // The label takes what the tile and the control leave, which is where the AppKit rows had it.
+        // The label takes what the icon and the control leave, which is where the AppKit rows had it.
         // A greyed-out row fades its icon and label, and disables its control: fading the control too
         // would leave a switch's knob without its track.
         HStack(spacing: 0) {
-            tile.opacity(isGreyed ? PanelMetrics.greyedAlpha : (isDimmed ? 0.35 : 1))
+            icon.opacity(isGreyed ? PanelMetrics.greyedAlpha : (isDimmed ? 0.35 : 1))
             Text(title)
                 .font(.system(size: 13))
                 .lineLimit(1)
                 .foregroundStyle(isDimmed ? AnyShapeStyle(.tertiary) : AnyShapeStyle(.primary))
                 .opacity(isGreyed ? PanelMetrics.greyedAlpha : 1)
-                .padding(.leading, PanelMetrics.tileInset)
+                .padding(.leading, PanelMetrics.iconInset)
                 .frame(maxWidth: .infinity, alignment: .leading)
             // Not `.disabled`: SwiftUI fades a disabled switch's track until it's gone on a light card.
             // A little fade of our own keeps its shape while saying it's out of reach.
@@ -501,7 +491,7 @@ private struct PanelRow<Control: View>: View {
                 .opacity(isGreyed ? 0.7 : 1)
                 .padding(.leading, PanelMetrics.labelSpacing)
         }
-        .padding(.leading, PanelMetrics.tileInset)
+        .padding(.leading, PanelMetrics.iconInset)
         .padding(.trailing, PanelMetrics.controlInset)
         .frame(height: PanelMetrics.rowHeight)
         .animation(.easeInOut(duration: PanelMetrics.greying), value: isGreyed)
@@ -510,23 +500,16 @@ private struct PanelRow<Control: View>: View {
 }
 
 /// A white symbol on a coloured rounded square, lit from above, as System Settings' icons are.
-private struct PanelTile: View {
+/// A row's icon: the system's symbol for it, in the label's own secondary colour.
+private struct PanelSymbol: View {
     let symbol: String
-    let color: NSColor
-
-    private var shape: RoundedRectangle { RoundedRectangle(cornerRadius: 6.5, style: .continuous) }
 
     var body: some View {
-        shape
-            .fill(LinearGradient(colors: [Color(nsColor: color.blended(withFraction: 0.3, of: .white) ?? color),
-                                          Color(nsColor: color)],
-                                 startPoint: .top, endPoint: .bottom))
-            .overlay(shape.strokeBorder(LinearGradient(colors: [.white.opacity(0.28), .white.opacity(0.02)],
-                                                       startPoint: .top, endPoint: .bottom), lineWidth: 1))
-            .overlay(Image(systemName: symbol)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(.white))
-            .frame(width: PanelMetrics.tileSize, height: PanelMetrics.tileSize)
+        Image(systemName: symbol)
+            .font(.system(size: 15, weight: .regular))
+            .symbolRenderingMode(.monochrome)
+            .foregroundStyle(.secondary)
+            .frame(width: PanelMetrics.iconWidth, height: PanelMetrics.iconWidth)
     }
 }
 
@@ -1021,7 +1004,7 @@ enum PanelRenderer {
             return nil
         }
         guard let panel = panel(in: view) else { return }
-        // From the text column to the switch: the row's padding, its tile, its label's gap, the switch is
+        // From the text column to the switch: the row's padding, its icon, its label's gap, the switch is
         // 36 wide, and its own gap's worth of room at least.
         let room = PanelMetrics.cardWidth - PanelMetrics.textColumn - PanelMetrics.controlInset - 36 - PanelMetrics.labelSpacing
         for label in panel.rowLabels {
