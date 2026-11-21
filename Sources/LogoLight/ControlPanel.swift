@@ -26,10 +26,9 @@ final class ControlPanel: NSView {
     /// The message edited (to remember it for next time).
     var onMorseTextChanged: ((String) -> Void)?
 
-    /// As wide as it has to be for the menu's own items (they need 153 with Disable Password) and no
-    /// wider: the longest label, "Heartbeat" (61 pt at 13 pt, 64 with Bold Text), fits between its icon and
-    /// its switch, which leave it 72.
-    static let width = PanelMetrics.width
+    /// The panel is as wide and as tall as its content wants (the effect tabs across one row are what make
+    /// it wide); this is the least it takes, so a panel without them still fits the menu's own items.
+    static let width = PanelMetrics.minWidth
 
     private let model: PanelModel
     private let preview: LogoPreview
@@ -45,11 +44,11 @@ final class ControlPanel: NSView {
         super.init(frame: NSRect(x: 0, y: 0, width: Self.width, height: 200))
         host.translatesAutoresizingMaskIntoConstraints = false
         addSubview(host)
+        // The panel is as big as what's in it: the hosting view is only pinned at the corner, and its own
+        // size (what SwiftUI wants) is what the panel's frame is set to.
         NSLayoutConstraint.activate([
             host.topAnchor.constraint(equalTo: topAnchor),
             host.leadingAnchor.constraint(equalTo: leadingAnchor),
-            host.trailingAnchor.constraint(equalTo: trailingAnchor),
-            host.bottomAnchor.constraint(equalTo: bottomAnchor),
         ])
         // The panel's callbacks are handed to it after it's built, so they're read when a control fires.
         model.onLogoSwitched = { [weak self] in self?.onLogoSwitched?($0) }
@@ -96,8 +95,11 @@ final class ControlPanel: NSView {
 
     private func sizeToFitContent() {
         host.layoutSubtreeIfNeeded()
-        let height = max(host.fittingSize.height, 1)
-        if abs(frame.height - height) > 0.5 { setFrameSize(NSSize(width: Self.width, height: height)) }
+        let size = host.fittingSize
+        guard size.width >= 1, size.height >= 1 else { return }
+        if abs(frame.width - size.width) > 0.5 || abs(frame.height - size.height) > 0.5 {
+            setFrameSize(size)
+        }
     }
 
     /// The one-line labels in the panel's rows, for the renderer's check that they fit: SwiftUI truncates
@@ -112,13 +114,13 @@ final class ControlPanel: NSView {
 
 /// The numbers the panel is laid out with, the same as System Settings' where they can be.
 private enum PanelMetrics {
-    static let width: CGFloat = 172
+    /// The least width the panel takes: enough for the menu's own items, and for the rows when the
+    /// effects are hidden. It's as wide as its content wants, otherwise.
+    static let minWidth: CGFloat = 172
     /// Around the panel's contents (9 at the top, 6 at the bottom), and between its groups.
     static let inset: CGFloat = 6
     static let topInset: CGFloat = 9
     static let spacing: CGFloat = 6
-    /// The width of the cards and of everything else in the panel.
-    static let cardWidth = width - 2 * inset
     /// How far text outside the cards is indented, on both sides.
     static let textIndent: CGFloat = 12
     /// A row: as tall as a row in System Settings' lists, a little tighter for a menu.
@@ -227,10 +229,10 @@ private final class PanelModel {
         onBreathesWhileChargingChanged?(on)
     }
 
-    /// At most one effect is on, so turning one on turns the others off straight away.
-    func choose(_ effect: LogoEffect, isOn: Bool) {
-        self.effect = isOn ? effect : .none
-        onEffectChosen?(isOn ? effect : .none)
+    /// The tab picked: one effect plays at a time, and None stops them all.
+    func choose(_ effect: LogoEffect) {
+        self.effect = effect
+        onEffectChosen?(effect)
     }
 
     func setLoops(_ loops: Bool) {
@@ -310,18 +312,21 @@ private struct PanelContent: View {
             }
 
             if let message = state.message {
+                // Wrapped at the panel's least width rather than stretched out on one line: it's the only
+                // thing there, and a wide panel for one sentence reads oddly.
                 Text(message)
                     .font(.system(size: NSFont.smallSystemFontSize))
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .frame(width: PanelMetrics.minWidth - 2 * PanelMetrics.inset - 2 * PanelMetrics.textIndent,
+                           alignment: .leading)
                     .padding(.horizontal, PanelMetrics.textIndent)
             }
         }
         .padding(.top, PanelMetrics.topInset)
         .padding(.bottom, PanelMetrics.inset)
         .padding(.horizontal, PanelMetrics.inset)
-        .frame(width: PanelMetrics.width, alignment: .top)
+        .frame(minWidth: PanelMetrics.minWidth, alignment: .top)
     }
 
     // MARK: - The brightness, the battery and the charging light
@@ -381,23 +386,28 @@ private struct PanelContent: View {
 
     // MARK: - The effects
 
+    /// The effects, as tabs across one row: at most one plays at a time, and None stops them.
     private var effectsCard: some View {
-        let effects = LogoEffect.allCases.filter { $0 != .none && ($0 != .sound || state.showsSound) }
-        return PanelCard {
-            ForEach(Array(effects.enumerated()), id: \.element) { index, effect in
-                if index > 0 { RowSeparator() }
-                PanelRow(title: effect.title, icon: .init(symbol: Self.symbolName(for: effect)),
-                         isGreyed: !state.canAdjust,
-                         help: effect == .sound ? "The logo glows with the sound your Mac is playing: brighter as "
-                             + "it gets louder, peaking at your brightness. macOS asks once to let LogoLight hear it." : nil) {
-                    Toggle(effect.title, isOn: Binding(get: { model.effect == effect },
-                                                       set: { model.choose(effect, isOn: $0) }))
-                        .labelsHidden()
-                        .toggleStyle(.switch)
-                        .controlSize(.small)
+        PanelCard {
+            Picker("Effect", selection: Binding(get: { model.effect }, set: { model.choose($0) })) {
+                ForEach(effects, id: \.self) { effect in
+                    Text(effect.title).tag(effect)
                 }
             }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .accessibilityLabel("Effect")
+            // Not `.disabled`: SwiftUI fades the tabs until they're hard to read on a light card.
+            .allowsHitTesting(state.canAdjust)
+            .opacity(state.canAdjust ? 1 : 0.7)
+            .padding(.horizontal, PanelMetrics.iconInset)
+            .frame(height: PanelMetrics.rowHeight)
+            .help("Breathe, Pulse, Heartbeat or Sound. macOS asks once to let LogoLight hear it, for Sound.")
         }
+    }
+
+    private var effects: [LogoEffect] {
+        LogoEffect.allCases.filter { $0 != .sound || state.showsSound }
     }
 
     // MARK: - Morse code
@@ -435,19 +445,6 @@ private struct PanelContent: View {
             .disabled(!state.canAdjust)
         }
     }
-
-    // MARK: - The icons
-
-    private static func symbolName(for effect: LogoEffect) -> String {
-        switch effect {
-        case .none: "lightbulb"
-        case .breathe: "wind"
-        case .pulse: "waveform"
-        case .heartbeat: "heart.fill"
-        case .sound: "music.note"
-        }
-    }
-
 }
 
 /// A rounded group of rows on glass, as System Settings has them.
@@ -499,7 +496,6 @@ private struct PanelRow<Control: View>: View {
     }
 }
 
-/// A white symbol on a coloured rounded square, lit from above, as System Settings' icons are.
 /// A row's icon: the system's symbol for it, in the label's own secondary colour.
 private struct PanelSymbol: View {
     let symbol: String
@@ -1005,8 +1001,10 @@ enum PanelRenderer {
         }
         guard let panel = panel(in: view) else { return }
         // From the text column to the switch: the row's padding, its icon, its label's gap, the switch is
-        // 36 wide, and its own gap's worth of room at least.
-        let room = PanelMetrics.cardWidth - PanelMetrics.textColumn - PanelMetrics.controlInset - 36 - PanelMetrics.labelSpacing
+        // 36 wide, and its own gap's worth of room at least. The panel is as wide as its content, so this
+        // is measured from what it came out as.
+        let room = panel.bounds.width - 2 * PanelMetrics.inset - PanelMetrics.textColumn
+            - PanelMetrics.controlInset - 36 - PanelMetrics.labelSpacing
         for label in panel.rowLabels {
             let width = (label as NSString).size(withAttributes: [.font: NSFont.systemFont(ofSize: 13)]).width
             if width > room + 0.5 {
