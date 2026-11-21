@@ -694,8 +694,10 @@ private final class LogoPreview: NSView {
     static var width: CGFloat { (height * aspectRatio).rounded() }
 
     private let lid = CAGradientLayer()
-    /// The logo as it looks unlit: a faint polished shape in the aluminium.
-    private let mark = CALayer()
+    /// The logo as it looks unlit: polished metal in the lid, catching the light along a diagonal.
+    private let mark = CAGradientLayer()
+    /// The mark's shape, which the gradient above shows through.
+    private let markShape = CALayer()
     /// Its light, faded in by the glow.
     private let logo = CALayer()
     /// How tall the lid was last drawn at, and in which finish, so both are only set when they change.
@@ -707,7 +709,11 @@ private final class LogoPreview: NSView {
         wantsLayer = true
         lid.cornerCurve = .continuous
         layer?.addSublayer(lid)
-        for layer in [mark, logo] {
+        markShape.contentsGravity = .resizeAspect
+        mark.mask = markShape
+        mark.startPoint = CGPoint(x: 0.1, y: 0)
+        mark.endPoint = CGPoint(x: 0.9, y: 1)
+        for layer in [mark, logo] as [CALayer] {
             layer.contentsGravity = .resizeAspect
             lid.addSublayer(layer)
         }
@@ -736,10 +742,12 @@ private final class LogoPreview: NSView {
             let logoFrame = NSRect(x: (size.width - logoSize) / 2, y: (size.height - logoSize) / 2,
                                    width: logoSize, height: logoSize)
             mark.frame = logoFrame
+            markShape.frame = mark.bounds
             logo.frame = logoFrame
             // The mark and the light are images made at the logo's size: at another height they're remade.
             logo.contents = Self.logoImage(.white, size: logoSize)
-            if let color = drawnFinish { mark.contents = Self.logoImage(Self.markColor(color), size: logoSize) }
+            markShape.contents = Self.logoShape(size: logoSize)
+            if let finish = drawnFinish { Self.paintMark(mark, finish: finish) }
         }
     }
 
@@ -748,27 +756,42 @@ private final class LogoPreview: NSView {
     func setFinish(_ finish: MacFinish) {
         guard finish != drawnFinish else { return }
         drawnFinish = finish
-        let (top, bottom, edge, markColor, markOpacity): (NSColor, NSColor, NSColor, NSColor, Float) = switch finish {
+        let (top, bottom, edge, markOpacity): (NSColor, NSColor, NSColor, Float) = switch finish {
         case .spaceBlack:
             (NSColor(srgbRed: 0.17, green: 0.17, blue: 0.18, alpha: 1),
              NSColor(srgbRed: 0.11, green: 0.11, blue: 0.12, alpha: 1),
-             NSColor(white: 1, alpha: 0.14), .white, 0.08)
+             NSColor(white: 1, alpha: 0.14), 0.9)
         case .silver:
             (NSColor(srgbRed: 0.86, green: 0.865, blue: 0.87, alpha: 1),
              NSColor(srgbRed: 0.72, green: 0.725, blue: 0.735, alpha: 1),
-             NSColor(white: 0, alpha: 0.16), .black, 0.12)
+             NSColor(white: 0, alpha: 0.16), 0.9)
         }
         withoutAnimation {
             lid.colors = [top.cgColor, bottom.cgColor]
             lid.borderColor = edge.cgColor
-            mark.contents = Self.logoImage(markColor, size: (drawnHeight * 0.317).rounded())
+            Self.paintMark(mark, finish: finish)
             mark.opacity = markOpacity
         }
     }
 
-    /// The colour the unlit mark has in `finish`: a faint polished shape in the metal.
-    private static func markColor(_ finish: MacFinish) -> NSColor {
-        finish == .silver ? .black : .white
+    /// Paints the unlit mark: the metal it's cut from, with a sheen across it, as a polished logo looks
+    /// in the lid when the light behind it is off.
+    private static func paintMark(_ mark: CAGradientLayer, finish: MacFinish) {
+        let (lit, shaded, sheen): (NSColor, NSColor, NSColor) = switch finish {
+        case .spaceBlack:
+            (NSColor(white: 0.26, alpha: 1), NSColor(white: 0.07, alpha: 1), NSColor(white: 0.42, alpha: 1))
+        case .silver:
+            (NSColor(white: 0.66, alpha: 1), NSColor(white: 0.44, alpha: 1), NSColor(white: 0.95, alpha: 1))
+        }
+        mark.colors = [lit.cgColor, sheen.cgColor, shaded.cgColor, sheen.cgColor, lit.cgColor]
+        mark.locations = [0, 0.22, 0.5, 0.78, 1]
+    }
+
+    /// The mark's shape alone (its alpha), for the gradient to show through.
+    private static func logoShape(size: CGFloat) -> NSImage? {
+        let symbol = NSImage(systemSymbolName: "apple.logo", accessibilityDescription: nil)
+            ?? NSImage(systemSymbolName: "lightbulb.fill", accessibilityDescription: nil)
+        return symbol?.withSymbolConfiguration(NSImage.SymbolConfiguration(pointSize: max(size, 1), weight: .regular))
     }
 
     /// The Apple logo in `color`, at the size it sits on the lid.
