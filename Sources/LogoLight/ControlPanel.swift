@@ -140,8 +140,11 @@ private enum PanelMetrics {
     /// and its label. A hairline between rows stops this far short of the trailing edge too.
     static let controlInset: CGFloat = 8
     static let labelSpacing: CGFloat = 4
-    /// The corners of the cards: rounder than before, as macOS 26 and later draw them.
+    /// The corners of the cards: rounder than before, as macOS 26 and later draw them. The tabs sit in
+    /// one too, and their lozenge is inset by the bar's padding, so it's that much tighter.
     static let cardRadius: CGFloat = 13
+    static let tabInset: CGFloat = 3
+    static let tabRadius: CGFloat = cardRadius - tabInset
     /// Between one group and the next group's header, and between a header and its card.
     static let headerSpacing: CGFloat = 8
     static let headerToCard: CGFloat = 4
@@ -599,7 +602,7 @@ private struct EffectTabs: View {
                     .background {
                         // The one that plays: one lozenge, sliding between the tabs.
                         if isSelected {
-                            Capsule(style: .continuous)
+                            RoundedRectangle(cornerRadius: PanelMetrics.tabRadius, style: .continuous)
                                 .fill(isDark ? Color.white.opacity(0.2) : Color.white)
                                 .shadow(color: .black.opacity(isDark ? 0.3 : 0.15), radius: 2.5, y: 1)
                                 .matchedGeometryEffect(id: "selection", in: pill)
@@ -614,9 +617,10 @@ private struct EffectTabs: View {
                       + "gets louder, peaking at your brightness. macOS asks once to let LogoLight hear it." : nil)
             }
         }
-        .padding(3)
-        // One background, and one only: the capsule the tabs sit in, in the cards' own material.
-        .background(GlassMaterial(shape: Capsule(style: .continuous)))
+        .padding(PanelMetrics.tabInset)
+        // One background, and one only: the bar the tabs sit in, in the cards' material and corners.
+        .background(GlassMaterial(shape: RoundedRectangle(cornerRadius: PanelMetrics.cardRadius,
+                                                          style: .continuous)))
         // The lozenge slides, as a glass bar's does: quick, with a little bounce, stretching on the way
         // when the tabs it crosses are of different widths.
         .animation(.spring(response: 0.34, dampingFraction: 0.72), value: selection)
