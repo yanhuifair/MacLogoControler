@@ -35,11 +35,12 @@ new name; old release notes still say LogoLight where they describe what shipped
   and needs a `maclogocontrol` cask pointed at the new repo's releases (the old token kept as a
   deprecated alias) and its workflow repointed, all of which needs the `Ark0N` account or a fork of
   the tap; and 1.5.0 has to be released in the new repo, because its `releases/latest/download/…`
-  links (README, site) have nothing behind them until then. Every picture — banner, menu GIFs, the site's menu shots,
-  `control-center.png`, `og-*.jpg`, the app icon if it carries the word — shows the old name until
-  drawn again (`scripts/make-banner.swift`, `scripts/make-media.swift`, `MACLOGOCONTROL_RENDER_PANEL`).
-  The banner draws its word at a fixed `x: left + 160` in 66 pt semibold, and "Mac Logo Control" is
-  about 1.9 times as wide as "LogoLight", so check it fits before shipping a redrawn one.
+  links (README, site) have nothing behind them until then. **Pictures**: the README's are drawn again for the name (banner, download button, all seven clips in
+  `docs/media`) and the site's are not: its menu shots (`menu-*-130.png`), `control-center-130.png`
+  and `og-130.jpg` still say LogoLight, and because the site caches pictures by name for a day they
+  need new names (`-150`). `control-center.png` is the user's screenshot with arrows and has no
+  script — its word is pasted in by hand — and `og-130.jpg` is
+  `sips -z 630 1200 docs/banner.jpg`. The app icon carries no word, so it was always fine.
   The site's download must go up *with* `MacLogoControl.zip`: `index.html` now links
   `/MacLogoControl.zip`, which 404s until the 1.5.0 zip is copied there.
   The local checkout directory is still `~/Documents/GitHub/LogoLight`.
@@ -290,7 +291,8 @@ the output back (first done 2026-11-20). So:
   page, tell Bing and the other IndexNow engines (the key file is
   `site/public/5ac2b92d275422183e47b25b5e0e0a4d.txt`):
   `curl "https://api.indexnow.org/indexnow?url=https://logolight.app/&key=5ac2b92d275422183e47b25b5e0e0a4d"`.
-- `scripts/make-media.swift` makes the README's GIFs (`docs/media/`) and videos (`site/media/`,
+- `scripts/make-media.swift` makes the README's GIFs (`docs/media/`: lid clips 440 × 317, the whole
+  menu 840 × 1846, the folder about 1.1 MB) and videos (`site/media/`,
   not uploaded: Safari needs Range requests for `<video>`, which static assets don't answer)
   from the live view's renders, with the effects' real timing. Re-run it after tuning effects.
 - **The Mac App Store isn't an option** as the app stands. It relies on private API
