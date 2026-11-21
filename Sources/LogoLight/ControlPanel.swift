@@ -594,18 +594,25 @@ private struct EffectTabs: View {
                     .foregroundStyle(isSelected ? AnyShapeStyle(.primary) : AnyShapeStyle(.secondary))
                     .padding(.horizontal, 10)
                     // Each tab as wide as its icon and title need, as AppKit sizes a segment's.
-                    .frame(minWidth: 40, minHeight: 22)
+                    .frame(minWidth: 40, minHeight: 24)
                     .background {
+                        // The one that plays: a glass lozenge, lit at its top edge, sliding between tabs.
                         if isSelected {
-                            RoundedRectangle(cornerRadius: 6, style: .continuous)
-                                .fill(isDark ? AnyShapeStyle(.white.opacity(0.18)) : AnyShapeStyle(.white))
+                            Capsule(style: .continuous)
+                                .fill(isDark ? AnyShapeStyle(.white.opacity(0.16)) : AnyShapeStyle(.white.opacity(0.92)))
                                 .overlay {
-                                    if !isDark {
-                                        RoundedRectangle(cornerRadius: 6, style: .continuous)
-                                            .strokeBorder(.black.opacity(0.10), lineWidth: 0.5)
-                                    }
+                                    Capsule(style: .continuous)
+                                        .fill(LinearGradient(colors: [.white.opacity(isDark ? 0.10 : 0.55), .clear],
+                                                             startPoint: .top, endPoint: .center))
                                 }
-                                .shadow(color: .black.opacity(isDark ? 0.18 : 0.10), radius: 1.5, y: 0.5)
+                                .overlay {
+                                    Capsule(style: .continuous)
+                                        .strokeBorder(LinearGradient(colors: [.white.opacity(isDark ? 0.34 : 0.9),
+                                                                              .white.opacity(isDark ? 0.06 : 0.2)],
+                                                                     startPoint: .top, endPoint: .bottom),
+                                                      lineWidth: 1)
+                                }
+                                .shadow(color: .black.opacity(isDark ? 0.28 : 0.14), radius: 3, y: 1)
                                 .matchedGeometryEffect(id: "selection", in: pill)
                         }
                     }
@@ -618,11 +625,27 @@ private struct EffectTabs: View {
                       + "gets louder, peaking at your brightness. macOS asks once to let LogoLight hear it." : nil)
             }
         }
-        // No track behind the tabs: the card is the backing, and the one that plays is the raised pill.
-        .padding(.vertical, 2)
-        // A glass tab's pill slides: a spring that settles quickly, with a little overshoot, and it
-        // stretches on the way when the tabs are of different widths.
-        .animation(.spring(response: 0.32, dampingFraction: 0.74), value: selection)
+        .padding(3)
+        // The bar itself is glass, as iOS's tab bar is: a see-through capsule, lit along its top edge,
+        // that the tabs sit in rather than on the card.
+        .background {
+            Capsule(style: .continuous)
+                .fill(isDark ? AnyShapeStyle(LinearGradient(colors: [.white.opacity(0.10), .white.opacity(0.05)],
+                                                            startPoint: .top, endPoint: .bottom))
+                             : AnyShapeStyle(LinearGradient(colors: [.black.opacity(0.055), .black.opacity(0.035)],
+                                                            startPoint: .top, endPoint: .bottom)))
+                .overlay {
+                    Capsule(style: .continuous)
+                        .strokeBorder(isDark
+                                      ? AnyShapeStyle(LinearGradient(colors: [.white.opacity(0.22), .white.opacity(0.03)],
+                                                                     startPoint: .top, endPoint: .bottom))
+                                      : AnyShapeStyle(Color.black.opacity(0.05)),
+                                      lineWidth: 1)
+                }
+        }
+        // The lozenge slides, as a glass bar's does: quick, with a little bounce, stretching on the way
+        // when the tabs it crosses are of different widths.
+        .animation(.spring(response: 0.34, dampingFraction: 0.72), value: selection)
     }
 
     private var isDark: Bool { colorScheme == .dark }
