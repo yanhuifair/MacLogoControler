@@ -49,17 +49,22 @@ public enum MorseCode {
 
     /// The message as steps that alternate lit and dark, starting lit. It ends with a word gap, so a
     /// loop leaves the same pause between repeats as between words. Empty if there's nothing to send.
+    /// Every step names the character it belongs to, so a panel can follow which group is sending.
     public static func steps(for text: String, unit: Double = unit, edgeFade: Double = edgeFade) -> [FadeStep] {
         var steps: [FadeStep] = []
+        var character = 0
         for word in words(text) {
             for (c, code) in word.enumerated() {
                 for (e, element) in code.enumerated() {
                     let on = element == "-" ? 3.0 : 1.0
                     // Within a character, between characters, and after the word (also the message's last).
                     let gap: Double = if e < code.count - 1 { 1 } else if c < word.count - 1 { 3 } else { 7 }
-                    steps.append(FadeStep(lit: true, fade: edgeFade, hold: max(0, on * unit - edgeFade)))
-                    steps.append(FadeStep(lit: false, fade: edgeFade, hold: max(0, gap * unit - edgeFade)))
+                    steps.append(FadeStep(lit: true, fade: edgeFade, hold: max(0, on * unit - edgeFade),
+                                          character: character))
+                    steps.append(FadeStep(lit: false, fade: edgeFade, hold: max(0, gap * unit - edgeFade),
+                                          character: character))
                 }
+                character += 1
             }
         }
         return steps

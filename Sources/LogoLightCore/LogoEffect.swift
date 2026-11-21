@@ -54,11 +54,15 @@ public struct FadeStep: Equatable, Sendable {
     public var lit: Bool
     public var fade: Double
     public var hold: Double
+    /// For a Morse step: the index of the character it sends, counting across the whole message.
+    /// Every other step — an effect's, or the lead-in — is nil.
+    public var character: Int?
 
-    public init(lit: Bool, fade: Double, hold: Double) {
+    public init(lit: Bool, fade: Double, hold: Double, character: Int? = nil) {
         self.lit = lit
         self.fade = fade
         self.hold = hold
+        self.character = character
     }
 }
 
@@ -94,6 +98,9 @@ public final class LogoAnimator {
     /// Called when `morse` ends by itself: a message sent once has finished, or was interrupted (the
     /// logo turned off, the display slept). Not called for `stopMorse()`.
     public var onMorseEnded: (@MainActor () -> Void)?
+    /// Called at the start of every step of a Morse message, with the character it sends — nil for the
+    /// lead-in, and once more when the message is stopped or done — so a panel can follow along.
+    public var onMorseCharacter: (@MainActor (Int?) -> Void)?
     /// Whether an effect (or a Morse message) is playing.
     public private(set) var isPlaying = false {
         didSet { updateActivity() }
@@ -177,6 +184,7 @@ public final class LogoAnimator {
     /// Forgets the Morse message, without starting anything else: the caller resumes, or not.
     public func stopMorse() {
         morse = nil
+        onMorseCharacter?(nil)
     }
 
     /// Switches the loop of the Morse message being sent, without restarting it: on, it carries on
@@ -220,6 +228,7 @@ public final class LogoAnimator {
     private func endMorseUnlessLooping() {
         guard let morse, !morse.loops else { return }
         self.morse = nil
+        onMorseCharacter?(nil)
         onMorseEnded?()
     }
 
@@ -242,6 +251,8 @@ public final class LogoAnimator {
                     // The display can go away without a sleep notification, e.g. when the lid is
                     // closed with an external display attached. Stop until the next wake.
                     guard self.isDisplayAwake() else { break playing }
+                    // A Morse message tells its owner which character this step sends.
+                    if peak != nil { self.onMorseCharacter?(step.character) }
                     do {
                         // Morse code (which has a `peak`) keeps every flash and gap its length, timed
                         // from when the logo moves: a rise corebrightnessd holds back delays the rest
@@ -267,6 +278,7 @@ public final class LogoAnimator {
                     guard let self, !Task.isCancelled else { return }
                     if self.morse?.loops == false {
                         self.morse = nil
+                        self.onMorseCharacter?(nil)
                         self.onMorseEnded?()
                     }
                     self.resume() // replaces this task, which then ends as a cancelled one

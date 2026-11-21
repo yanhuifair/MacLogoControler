@@ -129,6 +129,12 @@ final class ControlPanel: NSView {
         model.setMorseText(text)
     }
 
+    /// Which character of the Morse message is sending now (nil: none). The notation under the field
+    /// highlights it; the height can't change, so there's nothing to resize for.
+    func setMorseCharacter(_ index: Int?) {
+        model.morseCharacter = index
+    }
+
     /// Lays the panel out for the state it was given, for drawing it into a picture: SwiftUI applies a
     /// change on the next turn of the run loop, so this waits for it, then sizes the panel to what it drew.
     func settle() {
@@ -213,6 +219,8 @@ private final class PanelModel {
     var brightness: Double
     /// The message typed, which is the panel's while it's being edited.
     var morseText = "SOS"
+    /// The character of the message being sent now, as the app reports it. nil: none, or not known yet.
+    var morseCharacter: Int?
     /// The finish the live view is painted in: this Mac's, unless the user picked the other.
     var finish: MacFinish
 
@@ -262,6 +270,9 @@ private final class PanelModel {
         effect = state.effect
         loops = state.morseLoops
         if !isDraggingBrightness { brightness = state.brightness }
+        // Nothing being sent: the highlight goes back with it, even if the report was missed (e.g. the
+        // message ended while the panel was closed).
+        if state.morse == nil { morseCharacter = nil }
     }
 
     // MARK: - What the controls do
@@ -357,6 +368,39 @@ private final class PanelModel {
     var morseNotation: String {
         let notation = MorseCode.notation(morseText)
         return notation.isEmpty ? "Letters, digits and punctuation" : notation
+    }
+
+    /// The code the group being sent stands out in. The highlight only follows the message the field
+    /// still holds: editing mid-send shows the new message, unlit, until it's played.
+    var highlightedNotation: AttributedString {
+        var out = AttributedString()
+        let words = MorseCode.words(morseText)
+        let current = isSendingMorse && state.morse?.text == morseText ? morseCharacter : nil
+        func add(_ text: String, _ group: Int?) {
+            var part = AttributedString(text)
+            part.foregroundColor = group != nil && group == current ? Color.accentColor : Color.secondary
+            out.append(part)
+        }
+        guard !words.isEmpty else {
+            add(morseNotation, nil) // the hint, while nothing has been typed
+            return out
+        }
+        var index = 0
+        for (w, word) in words.enumerated() {
+            if w > 0 { add(" / ", nil) }
+            for (c, code) in word.enumerated() {
+                if c > 0 { add(" ", nil) }
+                add(Self.dots(code), index)
+                index += 1
+            }
+        }
+        return out
+    }
+
+    /// The dots of a code raised to middle dots, which read as dots at that size where a full stop on
+    /// the baseline would not.
+    static func dots(_ code: String) -> String {
+        code.replacingOccurrences(of: ".", with: "\u{B7}")
     }
 }
 
@@ -586,11 +630,11 @@ private struct PanelContent: View {
                     .onSubmit { model.play() }
                     .accessibilityLabel("Morse code message")
 
-                // The code the message becomes, shown as it's typed, with the play button at its end.
+                // The code the message becomes, shown as it's typed, with the play button at its end;
+                // while it's sending, the group going out now is lit.
                 HStack(spacing: PanelMetrics.labelSpacing + 2) {
-                    Text(Self.dots(model.morseNotation))
+                    Text(model.highlightedNotation)
                         .font(.system(size: 11, weight: .medium, design: .monospaced))
-                        .foregroundStyle(.secondary)
                         .lineLimit(1)
                         .truncationMode(.head)
                         .accessibilityLabel("Morse code: \(model.morseNotation)")
@@ -629,12 +673,6 @@ private struct PanelContent: View {
                     .accessibilityLabel("Repeat Morse code")
             }
         }
-    }
-
-    /// The notation as it's shown under the field: dots raised to middle dots, which read as dots at
-    /// that size where a full stop on the baseline would not.
-    private static func dots(_ notation: String) -> String {
-        notation.replacingOccurrences(of: ".", with: "\u{B7}")
     }
 }
 

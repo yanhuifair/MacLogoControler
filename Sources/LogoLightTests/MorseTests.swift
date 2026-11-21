@@ -123,6 +123,40 @@ func morseTests(_ t: TestHarness) async {
         t.expect(abs((f.daemon.level) - LogoAnimator.level(forBrightness: 0.5)) < 0.03, "level \(f.daemon.level)")
     }
 
+    t.test("every step names the character it sends, counting across words") {
+        // E, then T, then A (two elements): the pair of steps per element shares its character.
+        t.expectEqual(MorseCode.steps(for: "ET A").map(\.character), [0, 0, 1, 1, 2, 2, 2, 2])
+        t.expect(MorseCode.steps(for: "SOS").allSatisfy { $0.character != nil })
+    }
+
+    await t.test("reports which character is sending, and clears it when the message is done") {
+        let f = Fixture(direct: true, timeDriven: true)
+        f.controller.setBrightness(0.5)
+        t.expect(await waitUntil { !f.controller.animator!.isAnimating })
+        var seen: [Int?] = []
+        f.controller.onMorseCharacter = { seen.append($0) }
+        t.expect(f.controller.playMorse("SOS", loops: false))
+        t.expect(await waitUntil { f.controller.morse == nil }, "should finish")
+        t.expect(await waitUntil { !f.controller.animator!.isAnimating })
+        // The lead-in with nothing yet, then the three characters in order, then the clear.
+        var groups: [Int?] = []
+        for value in seen where value != groups.last { groups.append(value) }
+        t.expectEqual(groups, [nil, 0, 1, 2, nil])
+    }
+
+    await t.test("stopping a message clears the highlight at once") {
+        let f = Fixture(direct: true, timeDriven: true)
+        f.controller.setBrightness(0.5)
+        t.expect(await waitUntil { !f.controller.animator!.isAnimating })
+        var seen: [Int?] = []
+        f.controller.onMorseCharacter = { seen.append($0) }
+        t.expect(f.controller.playMorse("SOS", loops: true))
+        t.expect(await waitUntil { seen.contains(1) }, "should be midway into the message")
+        f.controller.stopMorse()
+        let last = seen.last ?? 0
+        t.expect(last == nil, "stop clears the highlighted character: \(String(describing: last))")
+    }
+
     await t.test("keeps every flash its length when corebrightnessd holds back each rise from dark") {
         let f = Fixture(direct: true, timeDriven: true)
         f.daemon.riseDelay = 0.15 // the display-ready gate, with an idle screen

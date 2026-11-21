@@ -270,6 +270,13 @@ public final class LogoController {
         set { animator?.onMorseEnded = newValue }
     }
 
+    /// Called as a Morse message plays, with the index of the character now sending — nil before the
+    /// first and after the last. A panel highlights that group.
+    public var onMorseCharacter: (@MainActor (Int?) -> Void)? {
+        get { animator?.onMorseCharacter }
+        set { animator?.onMorseCharacter = newValue }
+    }
+
     /// How bright the logo is (or how bright effects peak), from 0 (dimmest) to 1 (normal): the
     /// brightness chosen with `setBrightness(_:)`, or the battery's charge while it's followed.
     public var brightness: Double { animator?.brightness ?? 1 }

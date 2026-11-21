@@ -177,6 +177,8 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         panel.setMorseText(UserDefaults.standard.string(forKey: Self.morseTextDefaultsKey) ?? "SOS")
         // So the play button turns back from stop as soon as a message sent once is done.
         controller.onMorseEnded = { [weak self] in self?.refresh() }
+        // The character going out now, which the panel highlights in the notation.
+        controller.onMorseCharacter = { [weak self] in self?.panel.setMorseCharacter($0) }
         controller.onRiseFromDark = { [weak self] in self?.showNewFrame() }
         controller.onSoundFailed = { [weak self] in self?.soundFailed($0) }
 
@@ -488,6 +490,24 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         controller.stopMorse()
         refresh()
     }
+
+    #if DEBUG
+    /// For scripted UI checks: starts the panel's message, looping, so a screenshot can catch a group
+    /// of the notation lit up. Keeps trying while the controller is still settling at launch.
+    func debugSendMorse() {
+        let text = UserDefaults.standard.string(forKey: Self.morseTextDefaultsKey) ?? "SOS"
+        var tries = 0
+        let timer = Timer(timeInterval: 0.5, repeats: true) { [weak self] timer in
+            guard let self else { return timer.invalidate() }
+            tries += 1
+            let started = self.controller.playMorse(text, loops: true)
+            NSLog("LogoLight debug: morse start tried %d, started=%d", tries, started ? 1 : 0)
+            if started { self.refresh(); timer.invalidate() }
+            else if tries >= 20 { timer.invalidate() }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+    }
+    #endif
 
     /// The Sound effect couldn't start: the controller has dropped it, so the switch goes off and that's
     /// saved. Without permission to hear the sound, the alert can open the right System Settings pane.

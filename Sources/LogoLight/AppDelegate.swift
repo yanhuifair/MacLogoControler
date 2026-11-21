@@ -35,6 +35,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 self?.statusItemController?.openMenu()
             }
         }
+        // And sends the Morse right away, so a screenshot can catch the notation following it. A timer
+        // in the common modes, since the menu blocks the main queue while it's open.
+        if ProcessInfo.processInfo.environment["LOGOLIGHT_SEND_ON_OPEN"] != nil {
+            let send = Timer(timeInterval: 0.9, repeats: false) { [weak self] _ in
+                self?.statusItemController?.debugSendMorse()
+            }
+            RunLoop.main.add(send, forMode: .common)
+        }
         #endif
     }
 
