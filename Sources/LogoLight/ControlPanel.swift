@@ -449,7 +449,7 @@ private struct PanelContent: View {
                         // As wide as the card, its sides the card's own padding away, and tall as its
                         // shape makes it: no room left over either side.
                         LogoPreviewView(preview: preview, finish: model.finish, lid: model.lid)
-                            .frame(width: LogoPreview.width, height: LogoPreview.height(for: model.lid))
+                            .frame(width: LogoPreview.width, height: LogoPreview.height)
                         // Silver and space black, then 14 and 16 inch, as the MacBook Pro comes: the ones
                         // this Mac is, unless the user would rather see the others. In the tabs' bar.
                         HStack(spacing: PanelMetrics.labelSpacing + 2) {
@@ -935,10 +935,11 @@ private extension View {
 /// A live view of the logo: the back of the MacBook Pro in its own finish (space black or silver) and
 /// in the lid's real proportions, with the logo glowing on it.
 private final class LogoPreview: NSView {
-    /// How the panel draws the live view: as wide as a card's inside, the lid's shape giving the height.
+    /// How the panel draws the live view: as wide as a card's inside and always as tall as the
+    /// 16-inch lid — switching to the 14-inch scales the lid down inside the frame, not the frame
+    /// itself, so the panel never shifts when the size tab changes.
     static let width: CGFloat = PanelMetrics.liveViewWidth
-    static func height(for lid: MacLid) -> CGFloat { (width / geometry(for: lid).aspect).rounded() }
-    static var height: CGFloat { height(for: .sixteen) }
+    static var height: CGFloat { (width / geometry(for: .sixteen).aspect).rounded() }
 
     /// One lid's shape, as photographed edge to edge, all shares of the lid's height. Measured off
     /// Apple's own lid shots of both sizes: the 14-inch is a shade squarer and carries the same-size
@@ -948,11 +949,14 @@ private final class LogoPreview: NSView {
         let corner: CGFloat
         let mark: CGFloat
         let lift: CGFloat
+        /// The whole lid's size next to the 16-inch's, off Apple's dimensions (31.26 cm across,
+        /// against its 35.57) — the 14-inch is drawn this much smaller inside the same frame.
+        let scale: CGFloat
     }
     private static func geometry(for lid: MacLid) -> LidGeometry {
         switch lid {
-        case .fourteen: LidGeometry(aspect: 1.436, corner: 0.040, mark: 0.253, lift: 0.020)
-        case .sixteen: LidGeometry(aspect: 1.456, corner: 0.048, mark: 0.225, lift: 0.016)
+        case .fourteen: LidGeometry(aspect: 1.436, corner: 0.040, mark: 0.253, lift: 0.020, scale: 0.879)
+        case .sixteen: LidGeometry(aspect: 1.456, corner: 0.048, mark: 0.225, lift: 0.016, scale: 1)
         }
     }
     private let lid = CAGradientLayer()
@@ -998,8 +1002,8 @@ private final class LogoPreview: NSView {
         setAccessibilityLabel("Live view of the Apple logo")
     }
 
-    /// Shows the other lid's shape. The frame's height follows it (the panel refits itself), so this
-    /// only asks for a layout; `layout()` notices the shape changed even when the height didn't.
+    /// Shows the other lid's shape. The frame keeps the 16-inch lid's size whatever the lid, so this
+    /// only asks for a layout; `layout()` notices the shape changed even though nothing resized.
     func setLid(_ lid: MacLid) {
         guard lid != drawnLid else { return }
         drawnLid = lid
@@ -1008,14 +1012,21 @@ private final class LogoPreview: NSView {
 
     override func layout() {
         super.layout()
-        let height = bounds.height
-        guard height > 0, height != drawnHeight || laidOutLid != drawnLid else { return }
-        drawnHeight = height
+        let frameHeight = bounds.height
+        guard frameHeight > 0, frameHeight != drawnHeight || laidOutLid != drawnLid else { return }
+        drawnHeight = frameHeight
         laidOutLid = drawnLid
         let g = Self.geometry(for: drawnLid)
-        let size = NSSize(width: (height * g.aspect).rounded(), height: height)
+        // The frame is always the 16-inch lid's: the 16-inch fills it, the 14-inch — the physically
+        // smaller machine — is drawn scaled down and centred in it. All the shares below are of the
+        // lid's own height, not the frame's.
+        let size = NSSize(width: (bounds.width * g.scale).rounded(),
+                          height: (bounds.width * g.scale / g.aspect).rounded())
+        let height = size.height
         withoutAnimation {
-            lid.frame = NSRect(x: (bounds.width - size.width) / 2, y: 0, width: size.width, height: size.height)
+            lid.frame = NSRect(x: (bounds.width - size.width) / 2,
+                               y: (frameHeight - size.height) / 2,
+                               width: size.width, height: size.height)
             // The corner Apple mills: the same few millimetres on both lids, as a quarter circle.
             lid.cornerRadius = height * g.corner
             lid.borderWidth = height * 0.006
@@ -1301,14 +1312,16 @@ enum PanelRenderer {
             write(on, finish: .silver, appearance: appearance, options: options, to: "\(folder)/on-silver-\(suffix).png")
         }
         if options.menu {
-            for (suffix, appearance) in [("dark", NSAppearance.Name.darkAqua), ("light", .aqua)] {
-                let panel = ControlPanel(finish: .spaceBlack)
-                panel.setMorseText("SOS")
-                panel.update(on)
-                panel.showGlow(options.glow)
-                panel.settle()
-                draw(MenuPicture(panel: panel, isDark: appearance == .darkAqua), appearance: appearance, options: options,
-                     background: nil, to: "\(folder)/menu-\(suffix).png")
+            for (name, lid) in [("menu", MacLid.sixteen), ("menu-14", MacLid.fourteen)] {
+                for (suffix, appearance) in [("dark", NSAppearance.Name.darkAqua), ("light", .aqua)] {
+                    let panel = ControlPanel(finish: .spaceBlack, lid: lid)
+                    panel.setMorseText("SOS")
+                    panel.update(on)
+                    panel.showGlow(options.glow)
+                    panel.settle()
+                    draw(MenuPicture(panel: panel, isDark: appearance == .darkAqua), appearance: appearance, options: options,
+                         background: nil, to: "\(folder)/\(name)-\(suffix).png")
+                }
             }
         }
         for glow in options.glows {
