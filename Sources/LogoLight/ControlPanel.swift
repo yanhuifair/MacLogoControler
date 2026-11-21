@@ -860,10 +860,9 @@ private final class LogoPreview: NSView {
     static let width: CGFloat = PanelMetrics.liveViewWidth
     static var height: CGFloat { (width / aspectRatio).rounded() }
     private let lid = CAGradientLayer()
-    /// The logo as it looks unlit: polished metal in the lid, catching the light along a diagonal.
-    private let mark = CAGradientLayer()
-    /// The mark's shape, which the gradient above shows through.
-    private let markShape = CALayer()
+    /// The logo as it looks unlit: polished metal in the lid, catching the light above. Drawn to an
+    /// image (see `markImage`) rather than layered gradients, so the reflections can be composed.
+    private let mark = CALayer()
     /// Its light, faded in by the glow.
     private let logo = CALayer()
     /// How tall the lid was last drawn at, and in which finish, so both are only set when they change.
@@ -875,10 +874,6 @@ private final class LogoPreview: NSView {
         wantsLayer = true
         lid.cornerCurve = .continuous
         layer?.addSublayer(lid)
-        markShape.contentsGravity = .resizeAspect
-        mark.mask = markShape
-        mark.startPoint = CGPoint(x: 0.1, y: 0)
-        mark.endPoint = CGPoint(x: 0.9, y: 1)
         for layer in [mark, logo] as [CALayer] {
             layer.contentsGravity = .resizeAspect
             lid.addSublayer(layer)
@@ -908,12 +903,10 @@ private final class LogoPreview: NSView {
             let logoFrame = NSRect(x: (size.width - logoSize) / 2, y: (size.height - logoSize) / 2,
                                    width: logoSize, height: logoSize)
             mark.frame = logoFrame
-            markShape.frame = mark.bounds
             logo.frame = logoFrame
             // The mark and the light are images made at the logo's size: at another height they're remade.
             logo.contents = Self.logoImage(.white, size: logoSize)
-            markShape.contents = Self.logoShape(size: logoSize)
-            if let finish = drawnFinish { Self.paintMark(mark, finish: finish) }
+            if let finish = drawnFinish { repaintMark(finish: finish) }
         }
     }
 
@@ -935,31 +928,110 @@ private final class LogoPreview: NSView {
         withoutAnimation {
             lid.colors = [top.cgColor, bottom.cgColor]
             lid.borderColor = edge.cgColor
-            Self.paintMark(mark, finish: finish)
+            repaintMark(finish: finish)
             markBaseOpacity = markOpacity
             // A logo that's already lit keeps it that way: the metal shows only as far as it's dark.
             mark.opacity = markOpacity * Float(1 - (shownGlow ?? 0))
         }
     }
 
-    /// Paints the unlit mark: the metal it's cut from, with a sheen across it, as a polished logo looks
-    /// in the lid when the light behind it is off.
-    private static func paintMark(_ mark: CAGradientLayer, finish: MacFinish) {
-        let (lit, shaded, sheen): (NSColor, NSColor, NSColor) = switch finish {
-        case .spaceBlack:
-            (NSColor(white: 0.26, alpha: 1), NSColor(white: 0.07, alpha: 1), NSColor(white: 0.42, alpha: 1))
-        case .silver:
-            (NSColor(white: 0.66, alpha: 1), NSColor(white: 0.44, alpha: 1), NSColor(white: 0.95, alpha: 1))
-        }
-        mark.colors = [lit.cgColor, sheen.cgColor, shaded.cgColor, sheen.cgColor, lit.cgColor]
-        mark.locations = [0, 0.22, 0.5, 0.78, 1]
+    /// The scale reflections are drawn at: the screen's, or the renderer window's.
+    private var pixelScale: CGFloat { max(window?.backingScaleFactor ?? 2, 2) }
+
+    /// Redraws the mark's image at the size and scale it's shown at. Before the first layout there's
+    /// no size, and `layout()` paints it once there is.
+    private func repaintMark(finish: MacFinish) {
+        let logoSize = mark.frame.height
+        guard logoSize > 0 else { return }
+        let scale = pixelScale
+        mark.contentsScale = scale
+        mark.contents = Self.markImage(finish: finish, size: logoSize, scale: scale)
     }
 
-    /// The mark's shape alone (its alpha), for the gradient to show through.
-    private static func logoShape(size: CGFloat) -> NSImage? {
-        let symbol = NSImage(systemSymbolName: "apple.logo", accessibilityDescription: nil)
-            ?? NSImage(systemSymbolName: "lightbulb.fill", accessibilityDescription: nil)
-        return symbol?.withSymbolConfiguration(NSImage.SymbolConfiguration(pointSize: max(size, 1), weight: .regular))
+    /// Paints the unlit mark: the polished metal a logo is, reflecting what's above it — a wide soft
+    /// band of the light source across the middle with a sharper gloss line through it, the ceiling's
+    /// glow along the top, and the deeper shade of what's below toward the bottom. All of it is cut
+    /// to the logo's own shape, so the reflections read as being on the metal, not beside it.
+    private static func markImage(finish: MacFinish, size: CGFloat, scale: CGFloat) -> NSImage? {
+        let pixels = max(Int((size * scale).rounded()), 8)
+        let side = CGFloat(pixels)
+        let rect = CGRect(x: 0, y: 0, width: side, height: side)
+        guard let space = CGColorSpace(name: CGColorSpace.sRGB),
+              let maskContext = CGContext(data: nil, width: pixels, height: pixels, bitsPerComponent: 8,
+                                          bytesPerRow: 0, space: space,
+                                          bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue),
+              let out = CGContext(data: nil, width: pixels, height: pixels, bitsPerComponent: 8,
+                                  bytesPerRow: 0, space: space,
+                                  bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
+        // The logo's shape as a stencil, drawn as large as the canvas so its edges stay crisp.
+        guard let symbol = NSImage(systemSymbolName: "apple.logo", accessibilityDescription: nil)
+                ?? NSImage(systemSymbolName: "lightbulb.fill", accessibilityDescription: nil),
+              let shape = symbol.withSymbolConfiguration(
+                NSImage.SymbolConfiguration(pointSize: side, weight: .regular)) else { return nil }
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = NSGraphicsContext(cgContext: maskContext, flipped: false)
+        shape.draw(in: aspectFit(shape.size, in: side))  // as the layers fit it: centred, undistorted
+        NSGraphicsContext.restoreGraphicsState()
+        guard let stencil = maskContext.makeImage() else { return nil }
+        out.clip(to: rect, mask: stencil)
+
+        let metal: (top: NSColor, bottom: NSColor, sheen: CGFloat, gloss: CGFloat, ceiling: CGFloat, shade: CGFloat)
+        metal = switch finish {
+        case .spaceBlack: (NSColor(white: 0.33, alpha: 1), NSColor(white: 0.13, alpha: 1), 0.55, 0.38, 0.16, 0.42)
+        case .silver: (NSColor(white: 0.92, alpha: 1), NSColor(white: 0.74, alpha: 1), 0.5, 0.4, 0.25, 0.3)
+        }
+        // The metal itself, catching most of the light at the top.
+        if let base = CGGradient(colorsSpace: space, colors: [metal.bottom.cgColor, metal.top.cgColor] as CFArray,
+                                 locations: [0, 1]) {
+            out.drawLinearGradient(base, start: .zero, end: CGPoint(x: 0, y: side),
+                                   options: [.drawsBeforeStartLocation, .drawsAfterEndLocation])
+        }
+        // The light above, mirrored across the metal on a slight slant; the gloss is its sharper core.
+        Self.drawSheen(out, space: space, side: side, centre: 0.60, half: 0.24, tilt: 18,
+                       peak: NSColor(white: 1, alpha: metal.sheen))
+        Self.drawSheen(out, space: space, side: side, centre: 0.665, half: 0.05, tilt: 18,
+                       peak: NSColor(white: 1, alpha: metal.gloss))
+        // The ceiling along the top edge, and the shade of what's below along the bottom.
+        if let ceiling = CGGradient(colorsSpace: space,
+                                    colors: [NSColor.clear.cgColor, NSColor(white: 1, alpha: metal.ceiling).cgColor] as CFArray,
+                                    locations: [0, 1]),
+           let shade = CGGradient(colorsSpace: space,
+                                  colors: [NSColor(white: 0, alpha: metal.shade).cgColor, NSColor.clear.cgColor] as CFArray,
+                                  locations: [0, 1]) {
+            out.drawLinearGradient(ceiling, start: CGPoint(x: 0, y: side * 0.84), end: CGPoint(x: 0, y: side),
+                                   options: [.drawsBeforeStartLocation, .drawsAfterEndLocation])
+            out.drawLinearGradient(shade, start: .zero, end: CGPoint(x: 0, y: side * 0.34),
+                                   options: [.drawsBeforeStartLocation, .drawsAfterEndLocation])
+        }
+        guard let image = out.makeImage() else { return nil }
+        return NSImage(cgImage: image, size: NSSize(width: size, height: size))
+    }
+
+    /// Fills everything still clipped with a soft band of `peak`, horizontal but tilted about the
+    /// middle by `tilt`, fading to nothing over `half` of the height either side of `centre`.
+    private static func drawSheen(_ ctx: CGContext, space: CGColorSpace, side: CGFloat, centre: CGFloat,
+                                  half: CGFloat, tilt: CGFloat, peak: NSColor) {
+        guard let gradient = CGGradient(colorsSpace: space,
+                                        colors: [NSColor.clear.cgColor, peak.cgColor, NSColor.clear.cgColor] as CFArray,
+                                        locations: [0, 0.5, 1]) else { return }
+        ctx.saveGState()
+        ctx.translateBy(x: side / 2, y: side / 2)
+        ctx.rotate(by: tilt * .pi / 180)
+        ctx.translateBy(x: -side / 2, y: -side / 2)
+        let y = side * centre
+        ctx.drawLinearGradient(gradient, start: CGPoint(x: 0, y: y - side * half),
+                               end: CGPoint(x: 0, y: y + side * half),
+                               options: [.drawsBeforeStartLocation, .drawsAfterEndLocation])
+        ctx.restoreGState()
+    }
+
+    /// The rect a `size` image takes inside a square of `side`, centred and undistorted — the way
+    /// `contentsGravity = .resizeAspect` places it.
+    private static func aspectFit(_ size: NSSize, in side: CGFloat) -> CGRect {
+        guard size.width > 0, size.height > 0 else { return CGRect(x: 0, y: 0, width: side, height: side) }
+        let scale = min(side / size.width, side / size.height)
+        let width = size.width * scale, height = size.height * scale
+        return CGRect(x: (side - width) / 2, y: (side - height) / 2, width: width, height: height)
     }
 
     /// The Apple logo in `color`, at the size it sits on the lid.
