@@ -613,8 +613,16 @@ private struct EffectTabs: View {
                       + "gets louder, peaking at your brightness. macOS asks once to let LogoLight hear it." : nil)
             }
         }
-        // No bar behind them: the card is the only background, and the lozenge the only other thing.
-        .padding(.vertical, 2)
+        .padding(3)
+        // One background, and one only: the capsule the tabs sit in, with the lozenge on top of it.
+        .background {
+            Capsule(style: .continuous)
+                .fill(isDark ? Color.white.opacity(0.07) : Color.black.opacity(0.05))
+                .overlay {
+                    Capsule(style: .continuous)
+                        .strokeBorder(isDark ? Color.white.opacity(0.10) : Color.black.opacity(0.05), lineWidth: 1)
+                }
+        }
         // The lozenge slides, as a glass bar's does: quick, with a little bounce, stretching on the way
         // when the tabs it crosses are of different widths.
         .animation(.spring(response: 0.34, dampingFraction: 0.72), value: selection)
