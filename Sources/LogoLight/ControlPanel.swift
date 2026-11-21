@@ -908,9 +908,9 @@ private extension View {
 /// A live view of the logo: the back of the MacBook Pro in its own finish (space black or silver) and
 /// in the lid's real proportions, with the logo glowing on it.
 private final class LogoPreview: NSView {
-    /// The 14-inch MacBook Pro's lid is 31.3 × 22.1 cm, and the live view is drawn to that shape at
-    /// whatever height it's given.
-    static let aspectRatio: CGFloat = 31.3 / 22.1
+    /// Measured off Apple's own lid shots (14 and 16-inch): the lid as photographed, machined edge
+    /// to machined edge, is 1.45 times as wide as tall.
+    static let aspectRatio: CGFloat = 1.45
     /// How the panel draws the live view: as wide as a card's inside, the lid's shape giving the height.
     static let width: CGFloat = PanelMetrics.liveViewWidth
     static var height: CGFloat { (width / aspectRatio).rounded() }
@@ -920,6 +920,10 @@ private final class LogoPreview: NSView {
     private let mark = CALayer()
     /// Its light, faded in by the glow.
     private let logo = CALayer()
+    /// The machined edges the lid shots show: light along the hinge edge at the top, the shadow of
+    /// the front edge along the bottom. Hairlines, each fading away from its edge.
+    private let topRim = CAGradientLayer()
+    private let bottomLip = CAGradientLayer()
     /// How tall the lid was last drawn at, and in which finish, so both are only set when they change.
     private var drawnHeight: CGFloat = 0
     private var drawnFinish: MacFinish?
@@ -929,9 +933,15 @@ private final class LogoPreview: NSView {
         wantsLayer = true
         lid.cornerCurve = .continuous
         layer?.addSublayer(lid)
+        for layer in [mark, logo, topRim, bottomLip] as [CALayer] {
+            lid.addSublayer(layer)
+        }
         for layer in [mark, logo] as [CALayer] {
             layer.contentsGravity = .resizeAspect
-            lid.addSublayer(layer)
+        }
+        for edge in [topRim, bottomLip] as [CAGradientLayer] {
+            edge.startPoint = CGPoint(x: 0.5, y: 0)
+            edge.endPoint = CGPoint(x: 0.5, y: 1)
         }
         logo.shadowColor = NSColor.white.cgColor
         logo.shadowOffset = .zero
@@ -951,14 +961,23 @@ private final class LogoPreview: NSView {
         let size = NSSize(width: (height * Self.aspectRatio).rounded(), height: height)
         withoutAnimation {
             lid.frame = NSRect(x: (bounds.width - size.width) / 2, y: 0, width: size.width, height: size.height)
-            lid.cornerRadius = height * 0.085
+            // The corner Apple mills: ~3% of the lid's width across its shots, as a quarter circle.
+            lid.cornerRadius = height * 0.045
             lid.borderWidth = height * 0.006
-            logo.shadowRadius = height * 0.085
-            let logoSize = (height * 0.317).rounded()
-            let logoFrame = NSRect(x: (size.width - logoSize) / 2, y: (size.height - logoSize) / 2,
+            // The mark on a real lid stands a little under a fifth of the lid's way up, its centre
+            // just above the middle (measured off the lid shots: 0.19 high, 1.6% above centre).
+            let logoSize = (height * 0.225).rounded()
+            let logoFrame = NSRect(x: (size.width - logoSize) / 2,
+                                   y: (size.height - logoSize) / 2 - height * 0.016,
                                    width: logoSize, height: logoSize)
             mark.frame = logoFrame
             logo.frame = logoFrame
+            logo.shadowRadius = logoSize * 0.30
+            // The edges are hairlines hugging the lid, a percent of its height — 2–3 px on a lid
+            // the size of Apple's shots.
+            let rim = height * 0.012
+            topRim.frame = NSRect(x: 0, y: 0, width: size.width, height: rim)
+            bottomLip.frame = NSRect(x: 0, y: size.height - rim, width: size.width, height: rim)
             // The mark and the light are images made at the logo's size: at another height they're remade.
             logo.contents = Self.logoImage(.white, size: logoSize)
             if let finish = drawnFinish { repaintMark(finish: finish) }
@@ -970,21 +989,28 @@ private final class LogoPreview: NSView {
     func setFinish(_ finish: MacFinish) {
         guard finish != drawnFinish else { return }
         drawnFinish = finish
-        // Measured off Apple's own lid shots of the 14 and 16-inch (identical per finish):
-        // silver 227→176, space black 98→48.
-        let (top, bottom, edge, markOpacity): (NSColor, NSColor, NSColor, Float) = switch finish {
+        // Measured off Apple's own lid shots of the 14 and 16-inch (identical per finish), top edge
+        // to bottom edge: silver 0.89→0.60, space black 0.38→0.145. The hinge edge catches the
+        // light (strongly on space black, faintly on silver); the front edge drops a sharp shadow
+        // (more visible on silver, whose body is bright).
+        let (top, bottom, edge, rim, lip, markOpacity): (NSColor, NSColor, NSColor, NSColor, NSColor, Float) =
+        switch finish {
         case .spaceBlack:
             (NSColor(srgbRed: 0.38, green: 0.38, blue: 0.39, alpha: 1),
-             NSColor(srgbRed: 0.185, green: 0.185, blue: 0.195, alpha: 1),
-             NSColor(white: 1, alpha: 0.14), 1)
+             NSColor(srgbRed: 0.145, green: 0.145, blue: 0.155, alpha: 1),
+             NSColor(white: 1, alpha: 0.14),
+             NSColor(white: 1, alpha: 0.30), NSColor(white: 0, alpha: 0.14), 1)
         case .silver:
             (NSColor(srgbRed: 0.89, green: 0.895, blue: 0.90, alpha: 1),
-             NSColor(srgbRed: 0.69, green: 0.695, blue: 0.71, alpha: 1),
-             NSColor(white: 0, alpha: 0.16), 1)
+             NSColor(srgbRed: 0.60, green: 0.605, blue: 0.62, alpha: 1),
+             NSColor(white: 0, alpha: 0.16),
+             NSColor(white: 1, alpha: 0.10), NSColor(white: 0, alpha: 0.20), 1)
         }
         withoutAnimation {
             lid.colors = [top.cgColor, bottom.cgColor]
             lid.borderColor = edge.cgColor
+            topRim.colors = [rim.cgColor, NSColor.clear.cgColor]
+            bottomLip.colors = [NSColor.clear.cgColor, lip.cgColor]
             repaintMark(finish: finish)
             markBaseOpacity = markOpacity
             // A logo that's already lit keeps it that way: the metal shows only as far as it's dark.
@@ -1472,6 +1498,8 @@ private extension LogoPreview {
     func showLightAlone(withGlow: Bool) {
         lid.colors = nil
         lid.borderWidth = 0
+        topRim.isHidden = true
+        bottomLip.isHidden = true
         mark.isHidden = true
         logo.opacity = 1
         logo.shadowOpacity = withGlow ? 1 : 0
