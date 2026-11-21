@@ -1003,10 +1003,11 @@ private final class LogoPreview: NSView {
         mark.contents = Self.markImage(finish: finish, size: logoSize, scale: scale)
     }
 
-    /// Paints the unlit mark: the polished metal a logo is, reflecting what's above it — a wide soft
-    /// band of the light source across the middle with a sharper gloss line through it, the ceiling's
-    /// glow along the top, and the deeper shade of what's below toward the bottom. All of it is cut
-    /// to the logo's own shape, so the reflections read as being on the metal, not beside it.
+    /// Paints the unlit mark the way polished metal really reads: as a mirror with a hard edge
+    /// across it. Below and left of the edge is the dark side, reflecting the room behind the lid;
+    /// above and right is the bright side, reflecting the light above — brightest at the top and
+    /// dimming towards the bottom, where it catches the lid itself. The edge slants with the mark,
+    /// so the leaf falls on the bright side. All of it is cut to the logo's own shape.
     private static func markImage(finish: MacFinish, size: CGFloat, scale: CGFloat) -> NSImage? {
         let pixels = max(Int((size * scale).rounded()), 8)
         let side = CGFloat(pixels)
@@ -1023,61 +1024,42 @@ private final class LogoPreview: NSView {
                 ?? NSImage(systemSymbolName: "lightbulb.fill", accessibilityDescription: nil),
               let shape = symbol.withSymbolConfiguration(
                 NSImage.SymbolConfiguration(pointSize: side, weight: .regular)) else { return nil }
+        let box = aspectFit(shape.size, in: side)  // as the layers fit it: centred, undistorted
         NSGraphicsContext.saveGraphicsState()
         NSGraphicsContext.current = NSGraphicsContext(cgContext: maskContext, flipped: false)
-        shape.draw(in: aspectFit(shape.size, in: side))  // as the layers fit it: centred, undistorted
+        shape.draw(in: box)
         NSGraphicsContext.restoreGraphicsState()
         guard let stencil = maskContext.makeImage() else { return nil }
         out.clip(to: rect, mask: stencil)
 
-        let metal: (top: NSColor, bottom: NSColor, sheen: CGFloat, gloss: CGFloat, ceiling: CGFloat, shade: CGFloat)
-        metal = switch finish {
-        case .spaceBlack: (NSColor(white: 0.33, alpha: 1), NSColor(white: 0.13, alpha: 1), 0.55, 0.38, 0.16, 0.42)
-        case .silver: (NSColor(white: 0.92, alpha: 1), NSColor(white: 0.74, alpha: 1), 0.5, 0.4, 0.25, 0.3)
+        let mirror: (dark: CGFloat, brightLow: CGFloat, brightHigh: CGFloat)
+        mirror = switch finish {
+        case .spaceBlack: (0.05, 0.22, 0.64)
+        case .silver: (0.15, 0.48, 0.88)
         }
-        // The metal itself, catching most of the light at the top.
-        if let base = CGGradient(colorsSpace: space, colors: [metal.bottom.cgColor, metal.top.cgColor] as CFArray,
-                                 locations: [0, 1]) {
-            out.drawLinearGradient(base, start: .zero, end: CGPoint(x: 0, y: side),
+        // The dark side: what the metal reflects behind and below, flat and nearly black.
+        out.setFillColor(NSColor(white: mirror.dark, alpha: 1).cgColor)
+        out.fill(rect)
+        // The bright side, to the right of an edge slanting from a third of the mark's width
+        // across the top to just past half across the bottom — like a horizon tipped on its side.
+        out.saveGState()
+        out.beginPath()
+        out.move(to: CGPoint(x: box.minX + box.width * 0.32, y: box.maxY))
+        out.addLine(to: CGPoint(x: box.maxX, y: box.maxY))
+        out.addLine(to: CGPoint(x: box.maxX, y: box.minY))
+        out.addLine(to: CGPoint(x: box.minX + box.width * 0.60, y: box.minY))
+        out.closePath()
+        out.clip()
+        if let bright = CGGradient(colorsSpace: space,
+                                   colors: [NSColor(white: mirror.brightLow, alpha: 1).cgColor,
+                                            NSColor(white: mirror.brightHigh, alpha: 1).cgColor] as CFArray,
+                                   locations: [0, 1]) {
+            out.drawLinearGradient(bright, start: CGPoint(x: 0, y: box.minY), end: CGPoint(x: 0, y: box.maxY),
                                    options: [.drawsBeforeStartLocation, .drawsAfterEndLocation])
         }
-        // The light above, mirrored across the metal on a slight slant; the gloss is its sharper core.
-        Self.drawSheen(out, space: space, side: side, centre: 0.60, half: 0.24, tilt: 18,
-                       peak: NSColor(white: 1, alpha: metal.sheen))
-        Self.drawSheen(out, space: space, side: side, centre: 0.665, half: 0.05, tilt: 18,
-                       peak: NSColor(white: 1, alpha: metal.gloss))
-        // The ceiling along the top edge, and the shade of what's below along the bottom.
-        if let ceiling = CGGradient(colorsSpace: space,
-                                    colors: [NSColor.clear.cgColor, NSColor(white: 1, alpha: metal.ceiling).cgColor] as CFArray,
-                                    locations: [0, 1]),
-           let shade = CGGradient(colorsSpace: space,
-                                  colors: [NSColor(white: 0, alpha: metal.shade).cgColor, NSColor.clear.cgColor] as CFArray,
-                                  locations: [0, 1]) {
-            out.drawLinearGradient(ceiling, start: CGPoint(x: 0, y: side * 0.84), end: CGPoint(x: 0, y: side),
-                                   options: [.drawsBeforeStartLocation, .drawsAfterEndLocation])
-            out.drawLinearGradient(shade, start: .zero, end: CGPoint(x: 0, y: side * 0.34),
-                                   options: [.drawsBeforeStartLocation, .drawsAfterEndLocation])
-        }
+        out.restoreGState()
         guard let image = out.makeImage() else { return nil }
         return NSImage(cgImage: image, size: NSSize(width: size, height: size))
-    }
-
-    /// Fills everything still clipped with a soft band of `peak`, horizontal but tilted about the
-    /// middle by `tilt`, fading to nothing over `half` of the height either side of `centre`.
-    private static func drawSheen(_ ctx: CGContext, space: CGColorSpace, side: CGFloat, centre: CGFloat,
-                                  half: CGFloat, tilt: CGFloat, peak: NSColor) {
-        guard let gradient = CGGradient(colorsSpace: space,
-                                        colors: [NSColor.clear.cgColor, peak.cgColor, NSColor.clear.cgColor] as CFArray,
-                                        locations: [0, 0.5, 1]) else { return }
-        ctx.saveGState()
-        ctx.translateBy(x: side / 2, y: side / 2)
-        ctx.rotate(by: tilt * .pi / 180)
-        ctx.translateBy(x: -side / 2, y: -side / 2)
-        let y = side * centre
-        ctx.drawLinearGradient(gradient, start: CGPoint(x: 0, y: y - side * half),
-                               end: CGPoint(x: 0, y: y + side * half),
-                               options: [.drawsBeforeStartLocation, .drawsAfterEndLocation])
-        ctx.restoreGState()
     }
 
     /// The rect a `size` image takes inside a square of `side`, centred and undistorted — the way
