@@ -15,13 +15,13 @@
 //     swift scripts/make-media.swift --frames DIR     # use the renders (and logs) a previous run left in DIR
 //
 // It writes:
-// - docs/media/<clip>.gif, the lid alone on the website's #0e1014 (20 fps, lid 348 px wide);
-// - docs/media/menu-breathe-light.gif and menu-breathe-dark.gif, the whole menu (680 × 2476, scale 4): the panel
+// - docs/media/<clip>.gif, the lid alone on the website's #0e1014 (20 fps, lid 392 px wide);
+// - docs/media/menu-breathe-light.gif and menu-breathe-dark.gif, the whole menu (840 px wide, scale 2): the panel
 //   with Breathe on, the slider at the top and the live view breathing, and the menu's own items under it, in
 //   the menu's rounded shape with clear corners (a GIF's pixels are clear or not, so the corners' edge pixels are
 //   blended onto GitHub's page colour, white or #0d1117), light and dark for a <picture> that follows
 //   prefers-color-scheme;
-// - site/media/<clip>.mp4 (H.264, 30 fps, lid 696 px wide) with site/media/<clip>.png, the video's poster.
+// - site/media/<clip>.mp4 (H.264, 30 fps, lid 784 px wide) with site/media/<clip>.png, the video's poster.
 //   The videos are kept outside site/public, so they aren't uploaded: Safari plays <video> only from servers
 //   that answer Range requests, which Cloudflare's static assets don't. Move them into public/ with a Worker
 //   that does, if the site should show them.
@@ -73,14 +73,22 @@ let onOffLitHold = 0.8
 /// How a set of files is drawn: the renderer's scale (the lid is 116 × 82 points), the margin around
 /// the lid in pixels, and the frame rate.
 struct Format {
+    /// Names the folder its renders go in. Two formats can share a scale, so the scale can't be the key.
+    let name: String
     let scale: Int
     let padding: Int
     let fps: Int
+    /// Draws the whole menu too, which only the README's menu GIFs need.
+    let drawsMenu: Bool
 }
 
-let gifFormat = Format(scale: 3, padding: 24, fps: 20) // lid 348 × 246 px, 396 × 294 in all
-let menuFormat = Format(scale: 4, padding: 0, fps: 20) // the menu is 170 points wide: 680 px, shown at 320 in the README
-let videoFormat = Format(scale: 6, padding: 48, fps: 30) // twice that: 792 × 588
+// The scales are what keeps each output the pixel size the README and the website lay out, now that the
+// live view is the whole lid (392 × 269 points) and the panel 420 points wide; they used to be 3, 4 and 6,
+// from when the lid was 116 points across and the menu 170 wide, and those made every picture about three
+// times bigger than it is shown.
+let gifFormat = Format(name: "lid", scale: 1, padding: 24, fps: 20, drawsMenu: false)   // lid 392 × 269 px, 440 × 317 in all
+let menuFormat = Format(name: "menu", scale: 2, padding: 0, fps: 20, drawsMenu: true)   // 840 px wide, shown at 320 in the README
+let videoFormat = Format(name: "video", scale: 2, padding: 48, fps: 30, drawsMenu: false) // lid 784 × 538 px, 880 × 634 in all
 /// The website's dark background, #0e1014.
 let background = (red: 0x0e, green: 0x10, blue: 0x14)
 /// GitHub's page behind the README, light and dark (0xRRGGBB): what the menu GIFs' clear corners are edged with.
@@ -116,8 +124,8 @@ while let argument = arguments.popFirst() {
     }
 }
 
-func renders(_ format: Format) -> URL { framesFolder.appendingPathComponent("x\(format.scale)") }
-func renderLog(_ format: Format) -> URL { framesFolder.appendingPathComponent("render-x\(format.scale).log") }
+func renders(_ format: Format) -> URL { framesFolder.appendingPathComponent(format.name) }
+func renderLog(_ format: Format) -> URL { framesFolder.appendingPathComponent("render-\(format.name).log") }
 
 // MARK: - Rendering the live view
 
@@ -165,7 +173,7 @@ if shouldRender {
             "MACLOGOCONTROL_RENDER_BRIGHTNESS": "1",
             "MACLOGOCONTROL_RENDER_GLOW": "0",
         ]
-        if format.scale == menuFormat.scale { environment["MACLOGOCONTROL_RENDER_MENU"] = "1" }
+        if format.drawsMenu { environment["MACLOGOCONTROL_RENDER_MENU"] = "1" }
         let status = run(repo.appendingPathComponent(".build/debug/MacLogoControl").path, [], environment: environment,
                          log: renderLog(format))
         guard status == 0 else { fail("the renderer failed (exit \(status)), see \(framesFolder.path)") }
