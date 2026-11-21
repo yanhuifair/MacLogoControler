@@ -974,11 +974,11 @@ private final class LogoPreview: NSView {
         case .spaceBlack:
             (NSColor(srgbRed: 0.17, green: 0.17, blue: 0.18, alpha: 1),
              NSColor(srgbRed: 0.11, green: 0.11, blue: 0.12, alpha: 1),
-             NSColor(white: 1, alpha: 0.14), 0.9)
+             NSColor(white: 1, alpha: 0.14), 1)
         case .silver:
             (NSColor(srgbRed: 0.86, green: 0.865, blue: 0.87, alpha: 1),
              NSColor(srgbRed: 0.72, green: 0.725, blue: 0.735, alpha: 1),
-             NSColor(white: 0, alpha: 0.16), 0.9)
+             NSColor(white: 0, alpha: 0.16), 1)
         }
         withoutAnimation {
             lid.colors = [top.cgColor, bottom.cgColor]
@@ -1034,26 +1034,31 @@ private final class LogoPreview: NSView {
 
         let mirror: (dark: CGFloat, brightLow: CGFloat, brightHigh: CGFloat)
         mirror = switch finish {
-        case .spaceBlack: (0.05, 0.22, 0.64)
-        case .silver: (0.15, 0.48, 0.88)
+        case .spaceBlack: (0.025, 0.28, 0.78)
+        case .silver: (0.115, 0.56, 0.97)
         }
         // The dark side: what the metal reflects behind and below, flat and nearly black.
         out.setFillColor(NSColor(white: mirror.dark, alpha: 1).cgColor)
         out.fill(rect)
-        // The bright side, to the right of an edge slanting from a third of the mark's width
-        // across the top to just past half across the bottom — like a horizon tipped on its side.
+        // The bright side, to the right of an edge slanting a good deal as it descends — from
+        // below the leaf's left across the top to past the middle at the bottom, a horizon
+        // tipped on its side. Measured off a real lid: top at ~0.3 of the width, bottom at ~0.6.
         out.saveGState()
         out.beginPath()
-        out.move(to: CGPoint(x: box.minX + box.width * 0.32, y: box.maxY))
+        out.move(to: CGPoint(x: box.minX + box.width * 0.22, y: box.maxY))
         out.addLine(to: CGPoint(x: box.maxX, y: box.maxY))
         out.addLine(to: CGPoint(x: box.maxX, y: box.minY))
-        out.addLine(to: CGPoint(x: box.minX + box.width * 0.60, y: box.minY))
+        out.addLine(to: CGPoint(x: box.minX + box.width * 0.62, y: box.minY))
         out.closePath()
         out.clip()
+        // The bright side's gradient is at its brightest by the top of the body and stays there,
+        // so the leaf and the body's crown glare; measured off a real lid, the fall from the
+        // crown to the foot is gentler than the height of the canvas it's drawn in.
         if let bright = CGGradient(colorsSpace: space,
                                    colors: [NSColor(white: mirror.brightLow, alpha: 1).cgColor,
+                                            NSColor(white: mirror.brightHigh, alpha: 1).cgColor,
                                             NSColor(white: mirror.brightHigh, alpha: 1).cgColor] as CFArray,
-                                   locations: [0, 1]) {
+                                   locations: [0, 0.85, 1]) {
             out.drawLinearGradient(bright, start: CGPoint(x: 0, y: box.minY), end: CGPoint(x: 0, y: box.maxY),
                                    options: [.drawsBeforeStartLocation, .drawsAfterEndLocation])
         }
@@ -1087,7 +1092,7 @@ private final class LogoPreview: NSView {
 
     /// The glow last drawn, and how solid the unlit mark is before the light fades it out.
     private var shownGlow: Double?
-    private var markBaseOpacity: Float = 0.9
+    private var markBaseOpacity: Float = 1
 
     /// Called on every frame while the menu is open. A change too small to see isn't drawn, so a
     /// steady logo costs nothing.
