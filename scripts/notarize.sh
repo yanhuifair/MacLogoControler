@@ -1,5 +1,5 @@
 #!/bin/sh
-# Notarizes and staples build/LogoLight.app, then zips it into dist/ for distribution.
+# Notarizes and staples build/MacLogoControl.app, then zips it into dist/ for distribution.
 #
 #   NOTARY_PROFILE=logolight scripts/notarize.sh
 #
@@ -11,7 +11,7 @@ set -eu
 
 cd "$(dirname "$0")/.."
 
-APP="build/LogoLight.app"
+APP="build/MacLogoControl.app"
 : "${NOTARY_PROFILE:?Set NOTARY_PROFILE to a notarytool keychain profile (see the comment at the top)}"
 
 if codesign -dvv "$APP" 2>&1 | grep -q "Signature=adhoc"; then
@@ -21,8 +21,8 @@ fi
 
 VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Contents/Info.plist")"
 mkdir -p dist
-UPLOAD="dist/LogoLight-$VERSION-upload.zip"
-ZIP="dist/LogoLight-$VERSION.zip"
+UPLOAD="dist/MacLogoControl-$VERSION-upload.zip"
+ZIP="dist/MacLogoControl-$VERSION.zip"
 
 echo "==> Submitting to the notary service"
 ditto -c -k --keepParent "$APP" "$UPLOAD"

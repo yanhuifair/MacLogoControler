@@ -1,25 +1,25 @@
 #!/bin/sh
-# Builds LogoLight.app into ./build. The app itself needs only the Command Line Tools; its Control
+# Builds MacLogoControl.app into ./build. The app itself needs only the Command Line Tools; its Control
 # Center control (Controls/) needs Xcode 26 or later, and is left out without it.
 #
 #   scripts/build-app.sh
 #
 # Environment overrides:
-#   VERSION          marketing version (default: 1.4.0)
+#   VERSION          marketing version (default: 1.5.0)
 #   BUILD_NUMBER     build number      (default: number of git commits)
-#   BUNDLE_ID        bundle identifier (default: app.logolight.LogoLight)
+#   BUNDLE_ID        bundle identifier (default: app.logolight.MacLogoControl)
 #   SIGN_IDENTITY    codesign identity (default: "-", ad-hoc)
 set -eu
 
 cd "$(dirname "$0")/.."
 
-VERSION="${VERSION:-1.4.0}"
+VERSION="${VERSION:-1.5.0}"
 BUILD_NUMBER="${BUILD_NUMBER:-$(git rev-list --count HEAD 2>/dev/null || echo 1)}"
-BUNDLE_ID="${BUNDLE_ID:-app.logolight.LogoLight}"
+BUNDLE_ID="${BUNDLE_ID:-app.logolight.MacLogoControl}"
 SIGN_IDENTITY="${SIGN_IDENTITY:--}"
 
-APP="build/LogoLight.app"
-APPEX="$APP/Contents/PlugIns/LogoLightControls.appex"
+APP="build/MacLogoControl.app"
+APPEX="$APP/Contents/PlugIns/MacLogoControlControls.appex"
 
 # Fills in a template's $(BUNDLE_ID), $(VERSION) and $(BUILD_NUMBER).
 fill() {
@@ -36,15 +36,15 @@ echo "==> Building release binary"
 # it (Xcode-built apps, which record the real SDK, are fine). So tell the linker the real SDK.
 # The 14.0 must match `platforms` in Package.swift and LSMinimumSystemVersion in Resources/Info.plist.
 SDK_VERSION="$(xcrun --sdk macosx --show-sdk-version)"
-swift build -c release --product LogoLight \
+swift build -c release --product MacLogoControl \
     -Xlinker -platform_version -Xlinker macos -Xlinker 14.0 -Xlinker "$SDK_VERSION"
-BIN="$(swift build -c release --product LogoLight --show-bin-path)/LogoLight"
+BIN="$(swift build -c release --product MacLogoControl --show-bin-path)/MacLogoControl"
 vtool -show-build "$BIN" | grep -q "sdk $SDK_VERSION" || { echo "error: $BIN doesn't record SDK $SDK_VERSION" >&2; exit 1; }
 
 echo "==> Assembling $APP"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
-cp "$BIN" "$APP/Contents/MacOS/LogoLight"
+cp "$BIN" "$APP/Contents/MacOS/MacLogoControl"
 fill Resources/Info.plist "$APP/Contents/Info.plist"
 # Drawn by scripts/make-icon.swift. With Xcode's actool, it also goes in an asset catalog
 # (CFBundleIconName), which newer parts of macOS, like Control Center's gallery, look for.
@@ -92,23 +92,23 @@ if [ -n "$PROCESSOR" ] && [ "${SDK_MAJOR:-0}" -ge 26 ]; then
     TOOLCHAIN="$(cd "$(dirname "$PROCESSOR")/../.." && pwd)"
     rm -rf "$OBJ"
     mkdir -p "$OBJ" "$APPEX/Contents/MacOS" "$APPEX/Contents/Resources"
-    SOURCES="Controls/BacklightControl.swift Sources/LogoLightCore/ControlLink.swift"
+    SOURCES="Controls/BacklightControl.swift Sources/MacLogoControlCore/ControlLink.swift"
     # shellcheck disable=SC2086 # SOURCES is a list
-    xcrun swiftc -module-name LogoLightControls -O -whole-module-optimization -swift-version 6 \
+    xcrun swiftc -module-name MacLogoControlControls -O -whole-module-optimization -swift-version 6 \
         -sdk "$SDK" -target "$TARGET" -application-extension -parse-as-library \
-        -emit-const-values-path "$OBJ/LogoLightControls.swiftconstvalues" \
+        -emit-const-values-path "$OBJ/MacLogoControlControls.swiftconstvalues" \
         -const-gather-protocols-list Controls/const_extract_protocols.json \
         -Xlinker -application_extension -Xlinker -e -Xlinker _NSExtensionMain \
-        -o "$APPEX/Contents/MacOS/LogoLightControls" $SOURCES
+        -o "$APPEX/Contents/MacOS/MacLogoControlControls" $SOURCES
     fill Controls/Info.plist "$APPEX/Contents/Info.plist"
     printf '%s\n' $SOURCES > "$OBJ/sources.txt"
-    echo "$OBJ/LogoLightControls.swiftconstvalues" > "$OBJ/constvalues.txt"
+    echo "$OBJ/MacLogoControlControls.swiftconstvalues" > "$OBJ/constvalues.txt"
     : > "$OBJ/none.txt"
-    "$PROCESSOR" --toolchain-dir "$TOOLCHAIN" --module-name LogoLightControls --sdk-root "$SDK" \
+    "$PROCESSOR" --toolchain-dir "$TOOLCHAIN" --module-name MacLogoControlControls --sdk-root "$SDK" \
         --xcode-version "$(xcodebuild -version | awk '/Build version/ { print $3 }')" \
         --platform-family macOS --deployment-target 26.0 --target-triple "$TARGET" \
         --bundle-identifier "$BUNDLE_ID.Controls" --output "$APPEX/Contents/Resources" \
-        --binary-file "$APPEX/Contents/MacOS/LogoLightControls" --source-file-list "$OBJ/sources.txt" \
+        --binary-file "$APPEX/Contents/MacOS/MacLogoControlControls" --source-file-list "$OBJ/sources.txt" \
         --swift-const-vals-list "$OBJ/constvalues.txt" --metadata-file-list "$OBJ/none.txt" \
         --static-metadata-file-list "$OBJ/none.txt" --compile-time-extraction --deployment-aware-processing \
         --no-app-shortcuts-localization > "$OBJ/metadata.log" 2>&1 \

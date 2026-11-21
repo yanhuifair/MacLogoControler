@@ -1,4 +1,4 @@
-// Draws the README's "Download LogoLight" button, docs/download-button.png. It matches Buy Me a
+// Draws the README's "Download Mac Logo Control" button, docs/download-button.png. It matches Buy Me a
 // Coffee's own button (545 × 153 px, the same rounding), which sits next to it.
 //
 //   swift scripts/make-download-button.swift
@@ -22,7 +22,7 @@ let glyph = 46.0, gap = 20.0, margin = 46.0
 func makeLabel(size: Double) -> NSAttributedString {
     let base = NSFont.systemFont(ofSize: size, weight: .semibold)
     let font = base.fontDescriptor.withDesign(.rounded).flatMap { NSFont(descriptor: $0, size: size) } ?? base
-    return NSAttributedString(string: "Download LogoLight", attributes: [.font: font, .foregroundColor: NSColor.white])
+    return NSAttributedString(string: "Download Mac Logo Control", attributes: [.font: font, .foregroundColor: NSColor.white])
 }
 var size = 46.0
 while glyph + gap + makeLabel(size: size).size().width > width - 2 * margin { size -= 1 }

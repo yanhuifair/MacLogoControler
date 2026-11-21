@@ -1,10 +1,10 @@
-// Draws the README's banner, docs/banner.jpg: LogoLight's icon and name, the headline, and the large
+// Draws the README's banner, docs/banner.jpg: Mac Logo Control's icon and name, the headline, and the large
 // live view of the lid with the real menu (Breathe on) beside it, on a dark gradient. Every picture of
-// the logo in it is LogoLight's own render.
+// the logo in it is Mac Logo Control's own render.
 //
-//   swift build && LOGOLIGHT_RENDER_PANEL=/tmp/lid LOGOLIGHT_RENDER_SCALE=10 LOGOLIGHT_RENDER_GLOWS=1 .build/debug/LogoLight
-//   LOGOLIGHT_RENDER_PANEL=/tmp/menu LOGOLIGHT_RENDER_SCALE=3 LOGOLIGHT_RENDER_TRANSPARENT=1 \
-//     LOGOLIGHT_RENDER_EFFECT=breathe LOGOLIGHT_RENDER_BRIGHTNESS=1 LOGOLIGHT_RENDER_GLOW=0.8 .build/debug/LogoLight
+//   swift build && MACLOGOCONTROL_RENDER_PANEL=/tmp/lid MACLOGOCONTROL_RENDER_SCALE=10 MACLOGOCONTROL_RENDER_GLOWS=1 .build/debug/MacLogoControl
+//   MACLOGOCONTROL_RENDER_PANEL=/tmp/menu MACLOGOCONTROL_RENDER_SCALE=3 MACLOGOCONTROL_RENDER_TRANSPARENT=1 \
+//     MACLOGOCONTROL_RENDER_EFFECT=breathe MACLOGOCONTROL_RENDER_BRIGHTNESS=1 MACLOGOCONTROL_RENDER_GLOW=0.8 .build/debug/MacLogoControl
 //   swift scripts/make-banner.swift /tmp/lid/live-black-100.png /tmp/menu/on-dark.png
 
 import AppKit
@@ -44,7 +44,7 @@ func text(_ s: String, size: Double, weight: NSFont.Weight, color: NSColor, at p
 // The icon and name.
 let left = 150.0
 icon.draw(in: NSRect(x: left - 10, y: 120, width: 150, height: 150), from: .zero, operation: .sourceOver, fraction: 1, respectFlipped: true, hints: nil)
-_ = text("LogoLight", size: 66, weight: .semibold, color: .white, at: CGPoint(x: left + 160, y: 150))
+_ = text("Mac Logo Control", size: 66, weight: .semibold, color: .white, at: CGPoint(x: left + 160, y: 150))
 
 // The headline, the last word in the lid's blue-white, as on the site.
 let headline = 108.0

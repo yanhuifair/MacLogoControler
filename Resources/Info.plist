@@ -5,17 +5,18 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleExecutable</key>
-	<string>LogoLight</string>
+	<string>MacLogoControl</string>
 	<key>CFBundleIconFile</key>
 	<string>AppIcon</string>
 	<key>CFBundleIdentifier</key>
 	<string>$(BUNDLE_ID)</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
+	<!-- CFBundleName is meant to be 15 characters at most; the name people read is the display name. -->
 	<key>CFBundleName</key>
-	<string>LogoLight</string>
+	<string>MacLogoControl</string>
 	<key>CFBundleDisplayName</key>
-	<string>LogoLight</string>
+	<string>Mac Logo Control</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -28,10 +29,15 @@
 	<string>14.0</string>
 	<key>LSUIElement</key>
 	<true/>
+	<!-- Codeman reads one of these to tell that this app steps aside for its blinking (CodemanLoan).
+	     Mac Logo Control was LogoLight until 1.4.0, and a Codeman that predates the rename looks for
+	     the old key, so both stay until Codeman has been changed over. -->
 	<key>LogoLightStepsAsideForCodeman</key>
 	<integer>1</integer>
+	<key>MacLogoControlStepsAsideForCodeman</key>
+	<integer>1</integer>
 	<key>NSAudioCaptureUsageDescription</key>
-	<string>With the Sound effect on, LogoLight listens to the sound your Mac plays so the Apple logo can glow with it. Nothing is recorded or kept.</string>
+	<string>With the Sound effect on, Mac Logo Control listens to the sound your Mac plays so the Apple logo can glow with it. Nothing is recorded or kept.</string>
 	<key>NSHumanReadableCopyright</key>
 	<string>Copyright © 2026 Ark0N. Not affiliated with Apple Inc.</string>
 </dict>

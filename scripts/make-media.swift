@@ -1,10 +1,10 @@
 #!/usr/bin/env swift
-// Makes the animated examples of LogoLight's glowing logo: GIFs for the README and looping MP4s
+// Makes the animated examples of Mac Logo Control's glowing logo: GIFs for the README and looping MP4s
 // (with a poster PNG each) for the website.
 //
 // Every frame is the app's own drawing: the live view, the MacBook lid drawn by `LogoPreview`
-// (Sources/LogoLight/ControlPanel.swift), and for the menu GIFs the whole menu panel around it. The debug
-// build draws them without touching the logo (`LOGOLIGHT_RENDER_PANEL`): the live view at glows 0, 0.01 … 1,
+// (Sources/MacLogoControl/ControlPanel.swift), and for the menu GIFs the whole menu panel around it. The debug
+// build draws them without touching the logo (`MACLOGOCONTROL_RENDER_PANEL`): the live view at glows 0, 0.01 … 1,
 // and the panel once, with the live view dark. The glow is pasted into the panel's lid, which gives the same
 // pixels as the panel drawn at that glow (checked byte for byte). Frames in between the steps are blended from
 // the two nearest (accurate to an 8-bit step). Nothing else with a logo is drawn here.
@@ -27,8 +27,8 @@
 //   that does, if the site should show them.
 //
 // The motion follows the app at brightness 1, where every step fades all the way to dark or lit:
-// - The effects' steps are read from `LogoEffect.cycle` (Sources/LogoLightCore/LogoEffect.swift),
-//   and On/Off's fades from `switchFadeDuration` (Sources/LogoLightCore/LogoController.swift), so
+// - The effects' steps are read from `LogoEffect.cycle` (Sources/MacLogoControlCore/LogoEffect.swift),
+//   and On/Off's fades from `switchFadeDuration` (Sources/MacLogoControlCore/LogoController.swift), so
 //   re-running after tuning them keeps the media in step.
 // - Each fade follows the hardware's measured curve, the critically damped spring in `FadeCurve`
 //   (docs/corebrightnessd.md, "The fade curve"), from wherever the logo is toward 0 or 1.
@@ -158,15 +158,15 @@ if shouldRender {
         // At the menu's scale, the whole menu (`menu-dark.png`, `menu-light.png`) is drawn as the menu GIFs need
         // it: Breathe on, the slider at the top, and the live view dark, for the glow to be pasted in.
         var environment = [
-            "LOGOLIGHT_RENDER_PANEL": folder.path,
-            "LOGOLIGHT_RENDER_SCALE": String(format.scale),
-            "LOGOLIGHT_RENDER_GLOWS": glows,
-            "LOGOLIGHT_RENDER_EFFECT": menuEffect,
-            "LOGOLIGHT_RENDER_BRIGHTNESS": "1",
-            "LOGOLIGHT_RENDER_GLOW": "0",
+            "MACLOGOCONTROL_RENDER_PANEL": folder.path,
+            "MACLOGOCONTROL_RENDER_SCALE": String(format.scale),
+            "MACLOGOCONTROL_RENDER_GLOWS": glows,
+            "MACLOGOCONTROL_RENDER_EFFECT": menuEffect,
+            "MACLOGOCONTROL_RENDER_BRIGHTNESS": "1",
+            "MACLOGOCONTROL_RENDER_GLOW": "0",
         ]
-        if format.scale == menuFormat.scale { environment["LOGOLIGHT_RENDER_MENU"] = "1" }
-        let status = run(repo.appendingPathComponent(".build/debug/LogoLight").path, [], environment: environment,
+        if format.scale == menuFormat.scale { environment["MACLOGOCONTROL_RENDER_MENU"] = "1" }
+        let status = run(repo.appendingPathComponent(".build/debug/MacLogoControl").path, [], environment: environment,
                          log: renderLog(format))
         guard status == 0 else { fail("the renderer failed (exit \(status)), see \(framesFolder.path)") }
     }
@@ -190,7 +190,7 @@ func source(_ path: String) -> String {
 
 /// The effects' cycles, read from `LogoEffect.cycle`.
 func effectCycles() -> [String: [Step]] {
-    let text = source("Sources/LogoLightCore/LogoEffect.swift")
+    let text = source("Sources/MacLogoControlCore/LogoEffect.swift")
     guard let start = text.range(of: "public var cycle: [FadeStep] {"),
           let end = text.range(of: "public func cycle(startingLit", range: start.upperBound..<text.endIndex)
     else { fail("can't find LogoEffect.cycle") }
@@ -210,7 +210,7 @@ func effectCycles() -> [String: [Step]] {
 
 /// How long the switch fades the logo out and in, read from `LogoController.switchFadeDuration`.
 func switchFadeDuration() -> Double {
-    let text = source("Sources/LogoLightCore/LogoController.swift")
+    let text = source("Sources/MacLogoControlCore/LogoController.swift")
     let pattern = try! NSRegularExpression(pattern: #"switchFadeDuration: Double = ([0-9.]+)"#)
     guard let match = pattern.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
           let value = Double(text[Range(match.range(at: 1), in: text)!])

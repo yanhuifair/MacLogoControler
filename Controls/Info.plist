@@ -5,15 +5,15 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-	<string>LogoLight</string>
+	<string>Mac Logo Control</string>
 	<key>CFBundleExecutable</key>
-	<string>LogoLightControls</string>
+	<string>MacLogoControlControls</string>
 	<key>CFBundleIdentifier</key>
 	<string>$(BUNDLE_ID).Controls</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>LogoLightControls</string>
+	<string>MacLogoControlControls</string>
 	<key>CFBundlePackageType</key>
 	<string>XPC!</string>
 	<key>CFBundleShortVersionString</key>

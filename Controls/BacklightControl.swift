@@ -5,11 +5,11 @@ import WidgetKit
 
 // The Control Center control (macOS 26 and later): one switch for the logo, which can also be placed in
 // the menu bar. It runs in this sandboxed extension, which can't touch the logo, so it asks the running
-// LogoLight over `ControlLink` (Sources/LogoLightCore/ControlLink.swift, compiled in too).
-// scripts/build-app.sh builds it into LogoLight.app/Contents/PlugIns.
+// Mac Logo Control over `ControlLink` (Sources/MacLogoControlCore/ControlLink.swift, compiled in too).
+// scripts/build-app.sh builds it into MacLogoControl.app/Contents/PlugIns.
 
 @main
-struct LogoLightControls: WidgetBundle {
+struct MacLogoControlControls: WidgetBundle {
     var body: some Widget {
         BacklightControl()
     }
@@ -21,11 +21,11 @@ struct BacklightControl: ControlWidget {
     var body: some ControlWidgetConfiguration {
         StaticControlConfiguration(kind: ControlLink.kind, provider: BacklightValue()) { isOn in
             ControlWidgetToggle(isOn: isOn, action: SetBacklightIntent()) {
-                Label("LogoLight", systemImage: isOn ? "lightbulb.fill" : "lightbulb.slash")
+                Label("Mac Logo Control", systemImage: isOn ? "lightbulb.fill" : "lightbulb.slash")
             }
             .tint(.blue)
         }
-        .displayName("LogoLight")
+        .displayName("Mac Logo Control")
         .description("Turns the logo on the back of the lid on or off.")
     }
 }
@@ -41,23 +41,23 @@ struct BacklightValue: ControlValueProvider {
 }
 
 struct SetBacklightIntent: SetValueIntent {
-    static let title: LocalizedStringResource = "Turn LogoLight On or Off"
-    static let description = IntentDescription("Turns the logo on the back of the lid on or off, through LogoLight.")
+    static let title: LocalizedStringResource = "Turn Mac Logo Control On or Off"
+    static let description = IntentDescription("Turns the logo on the back of the lid on or off, through Mac Logo Control.")
 
-    @Parameter(title: "LogoLight")
+    @Parameter(title: "Mac Logo Control")
     var value: Bool
 
     init() {}
 
     func perform() async throws -> some IntentResult {
-        // LogoLight drops a change it can't take yet (it's waiting for a password or `sudo`), and
+        // Mac Logo Control drops a change it can't take yet (it's waiting for a password or `sudo`), and
         // answers with the switch as it is.
         guard try await ContainingApp.ask(value ? .turnOn : .turnOff).isOn == value else { throw ControlError.busy }
         return .result()
     }
 }
 
-// MARK: - Talking to LogoLight
+// MARK: - Talking to Mac Logo Control
 
 enum ControlError: Error, CustomLocalizedStringResourceConvertible {
     case notResponding
@@ -66,14 +66,14 @@ enum ControlError: Error, CustomLocalizedStringResourceConvertible {
 
     var localizedStringResource: LocalizedStringResource {
         switch self {
-        case .notResponding: "LogoLight didn't respond. Open LogoLight and try again."
-        case .busy: "LogoLight is busy, e.g. waiting for your password. Try again in a moment."
+        case .notResponding: "Mac Logo Control didn't respond. Open Mac Logo Control and try again."
+        case .busy: "Mac Logo Control is busy, e.g. waiting for your password. Try again in a moment."
         case .unavailable: "This Mac has no illuminated logo."
         }
     }
 }
 
-/// LogoLight, the app this extension is inside.
+/// Mac Logo Control, the app this extension is inside.
 enum ContainingApp {
     /// The extension's bundle ID without `ControlLink.extensionSuffix`.
     static var bundleID: String {
@@ -81,21 +81,21 @@ enum ContainingApp {
         return id.hasSuffix(ControlLink.extensionSuffix) ? String(id.dropLast(ControlLink.extensionSuffix.count)) : id
     }
 
-    /// LogoLight.app, three levels up from LogoLight.app/Contents/PlugIns/LogoLightControls.appex.
+    /// MacLogoControl.app, three levels up from MacLogoControl.app/Contents/PlugIns/MacLogoControlControls.appex.
     static var url: URL {
         Bundle.main.bundleURL.deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
     }
 
-    /// What LogoLight says, or while it isn't running, what it said last (`nil` if never).
+    /// What Mac Logo Control says, or while it isn't running, what it said last (`nil` if never).
     static func currentState() async -> ControlLink.State? {
         guard case .answered(let state) = ControlLink.send(.state, toApp: bundleID) else { return lastKnownState }
         lastKnownState = state
         return state
     }
 
-    /// Sends `request` to LogoLight and returns its answer. If LogoLight isn't running, it's opened in
+    /// Sends `request` to Mac Logo Control and returns its answer. If Mac Logo Control isn't running, it's opened in
     /// the background first, and the request is sent once it's there (for up to 5 s). A request that
-    /// reached LogoLight but wasn't answered in time isn't sent again: it may still be handled.
+    /// reached Mac Logo Control but wasn't answered in time isn't sent again: it may still be handled.
     static func ask(_ request: ControlLink.Request) async throws -> ControlLink.State {
         var outcome = ControlLink.send(request, toApp: bundleID)
         if outcome == .notRunning {
@@ -118,13 +118,13 @@ enum ContainingApp {
         }
     }
 
-    /// What LogoLight last said, kept in the extension's own defaults for when it isn't running.
+    /// What Mac Logo Control last said, kept in the extension's own defaults for when it isn't running.
     private static var lastKnownState: ControlLink.State? {
         get { (UserDefaults.standard.data(forKey: "LastKnownState")).flatMap(ControlLink.State.init(data:)) }
         set { UserDefaults.standard.set(newValue?.data, forKey: "LastKnownState") }
     }
 
-    /// Opens LogoLight without bringing it to the front, and returns once it has launched (or failed to).
+    /// Opens Mac Logo Control without bringing it to the front, and returns once it has launched (or failed to).
     private static func open() async {
         let configuration = NSWorkspace.OpenConfiguration()
         configuration.activates = false

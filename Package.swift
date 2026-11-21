@@ -2,28 +2,28 @@
 import PackageDescription
 
 let package = Package(
-    name: "LogoLight",
+    name: "MacLogoControl",
     platforms: [.macOS(.v14)],
     products: [
-        .executable(name: "LogoLight", targets: ["LogoLight"]),
+        .executable(name: "MacLogoControl", targets: ["MacLogoControl"]),
     ],
     targets: [
         // Hardware access and privileged commands. No UI code lives here.
         .target(
-            name: "LogoLightCore",
+            name: "MacLogoControlCore",
             linkerSettings: [.linkedFramework("IOKit")]
         ),
         // The menu bar app.
         .executableTarget(
-            name: "LogoLight",
-            dependencies: ["LogoLightCore"]
+            name: "MacLogoControl",
+            dependencies: ["MacLogoControlCore"]
         ),
-        // Self-contained test runner (`swift run LogoLightTests`).
+        // Self-contained test runner (`swift run MacLogoControlTests`).
         // XCTest and swift-testing are only available with a full Xcode install,
         // so this keeps the project buildable and testable with the Command Line Tools alone.
         .executableTarget(
-            name: "LogoLightTests",
-            dependencies: ["LogoLightCore"]
+            name: "MacLogoControlTests",
+            dependencies: ["MacLogoControlCore"]
         ),
     ]
 )

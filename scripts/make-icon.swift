@@ -1,4 +1,4 @@
-// Draws LogoLight's app icon, a space black lid with a soft light glowing at its centre, and writes it
+// Draws Mac Logo Control's app icon, a space black lid with a soft light glowing at its centre, and writes it
 // as Resources/AppIcon.icns. (No Apple logo: Apple doesn't allow it in other apps' icons.)
 //
 //   swift scripts/make-icon.swift && git add Resources/AppIcon.icns
