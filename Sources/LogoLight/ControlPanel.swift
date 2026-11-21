@@ -341,24 +341,21 @@ private struct PanelContent: View {
             }
 
             if state.isSupported {
-                PanelCard {
-                    VStack(spacing: 10) {
+                // The live view, then the finish picker under it in the tabs' own bar — outside the card,
+                // so the bar isn't a second background inside one.
+                VStack(spacing: PanelMetrics.headerToCard) {
+                    PanelCard {
                         LogoPreviewView(preview: preview, finish: model.finish)
                             .frame(height: LogoPreview.height)
                             .frame(maxWidth: .infinity)
-                        // Silver and space black, as the MacBook Pro comes: the one this Mac is, unless the
-                        // user would rather see the other.
-                        Picker("Preview finish", selection: Binding(get: { model.finish },
-                                                                    set: { model.setFinish($0) })) {
-                            Text("Silver").tag(MacFinish.silver)
-                            Text("Space Black").tag(MacFinish.spaceBlack)
-                        }
-                        .pickerStyle(.segmented)
-                        .labelsHidden()
-                        .frame(width: 200)
-                        .accessibilityLabel("Preview finish")
+                            .padding(.vertical, 9)
                     }
-                    .padding(.vertical, 9)
+                    // Silver and space black, as the MacBook Pro comes: the one this Mac is, unless the
+                    // user would rather see the other.
+                    OptionTabs(options: [
+                        OptionTabs<MacFinish>.Option(value: .silver, title: "Silver"),
+                        OptionTabs<MacFinish>.Option(value: .spaceBlack, title: "Space Black"),
+                    ], selection: model.finish, choose: { model.setFinish($0) })
                 }
             }
 
@@ -498,7 +495,13 @@ private struct PanelContent: View {
     private var effectsCard: some View {
         // No card around the tabs: they're one row, and a card behind them was just another layer under
         // the lozenge. The card's inset keeps them in line with the rows above and below.
-        EffectTabs(effects: effects, selection: model.effect, choose: { model.choose($0) })
+        OptionTabs(options: effects.map { effect in
+            OptionTabs<LogoEffect>.Option(value: effect, title: effect.title, symbol: Self.symbol(effect),
+                                          help: effect == .sound
+                                              ? "The logo glows with the sound your Mac is playing: brighter as "
+                                                  + "it gets louder, peaking at your brightness. macOS asks once "
+                                                  + "to let LogoLight hear it." : nil)
+        }, selection: model.effect, choose: { model.choose($0) })
             .allowsHitTesting(state.canAdjust)
             .opacity(state.canAdjust ? 1 : 0.7)
             // The panel already insets it as it does the cards: no padding of its own.
@@ -507,6 +510,17 @@ private struct PanelContent: View {
 
     private var effects: [LogoEffect] {
         LogoEffect.allCases.filter { $0 != .sound || state.showsSound }
+    }
+
+    /// Each effect's symbol, beside its title in the tabs.
+    private static func symbol(_ effect: LogoEffect) -> String {
+        switch effect {
+        case .none: "slash.circle"
+        case .breathe: "wind"
+        case .pulse: "waveform"
+        case .heartbeat: "heart.fill"
+        case .sound: "music.note"
+        }
     }
 
     // MARK: - Morse code
@@ -598,27 +612,38 @@ private struct PanelRow<Control: View>: View {
 
 /// A row of tabs, one per effect: the one playing is on a raised pill. Drawn here rather than with a
 /// segmented `Picker`, which shows a segment's title or its icon but not both.
-private struct EffectTabs: View {
-    let effects: [LogoEffect]
-    let selection: LogoEffect
-    let choose: (LogoEffect) -> Void
+/// A row of tabs, for a choice of a few: the one picked sits on a lozenge of its own, which slides from
+/// where it was to where it's going, in a bar of the cards' material.
+private struct OptionTabs<Value: Hashable>: View {
+    struct Option {
+        let value: Value
+        let title: String
+        /// The symbol beside the title, where there is one.
+        var symbol: String?
+        var help: String?
+    }
+
+    let options: [Option]
+    let selection: Value
+    let choose: (Value) -> Void
 
     @Environment(\.colorScheme) private var colorScheme
-    /// One pill, shared by whichever tab is picked: it slides from the old to the new rather than each
-    /// tab lighting up on its own, which is how macOS 26's glass tabs move the selection.
+    /// One lozenge, shared by whichever tab is picked, so it slides rather than each lighting up on its own.
     @Namespace private var pill
 
     var body: some View {
         HStack(spacing: 0) {
-            ForEach(effects, id: \.self) { effect in
-                let isSelected = effect == selection
+            ForEach(Array(options.enumerated()), id: \.element.value) { index, option in
+                let isSelected = option.value == selection
                 Button {
-                    choose(effect)
+                    choose(option.value)
                 } label: {
                     HStack(spacing: 5) {
-                        Image(systemName: Self.symbol(effect))
-                            .font(.system(size: 11, weight: .medium))
-                        Text(effect.title)
+                        if let symbol = option.symbol {
+                            Image(systemName: symbol)
+                                .font(.system(size: 11, weight: .medium))
+                        }
+                        Text(option.title)
                             .font(.system(size: 13))
                             .lineLimit(1)
                     }
@@ -627,7 +652,6 @@ private struct EffectTabs: View {
                     // Each tab as wide as its icon and title need; the spacers share out the rest.
                     .frame(minWidth: 40, minHeight: 24)
                     .background {
-                        // The one that plays: one lozenge, sliding between the tabs.
                         if isSelected {
                             RoundedRectangle(cornerRadius: PanelMetrics.tabRadius, style: .continuous)
                                 .fill(isDark ? Color.white.opacity(0.2) : Color.white)
@@ -638,11 +662,10 @@ private struct EffectTabs: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel(effect.title)
+                .accessibilityLabel(option.title)
                 .accessibilityAddTraits(isSelected ? [.isSelected] : [])
-                .tip(effect == .sound ? "The logo glows with the sound your Mac is playing: brighter as it "
-                      + "gets louder, peaking at your brightness. macOS asks once to let LogoLight hear it." : nil)
-                if effect != effects.last { Spacer(minLength: 0) }
+                .tip(option.help)
+                if index < options.count - 1 { Spacer(minLength: 0) }
             }
         }
         // As wide as the cards, so its edges line up with theirs, with the tabs spread across it.
@@ -657,17 +680,6 @@ private struct EffectTabs: View {
     }
 
     private var isDark: Bool { colorScheme == .dark }
-
-    /// Each effect's symbol: what the tabs had as rows before they were tabs.
-    private static func symbol(_ effect: LogoEffect) -> String {
-        switch effect {
-        case .none: "slash.circle"
-        case .breathe: "wind"
-        case .pulse: "waveform"
-        case .heartbeat: "heart.fill"
-        case .sound: "music.note"
-        }
-    }
 }
 
 /// A row's icon: the system's symbol for it, in the label's own secondary colour.
