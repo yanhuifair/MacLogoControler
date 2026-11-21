@@ -12,7 +12,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     private let menu = NSMenu()
 
-    private let panel = ControlPanel(finish: MacFinish.current() ?? .spaceBlack)
+    private let panel = ControlPanel(finish: StatusItemController.previewFinish)
     private let panelItem = NSMenuItem()
     private let passwordlessItem = NSMenuItem()
     private let lidClosedItem = NSMenuItem()
@@ -69,6 +69,16 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     private static let breathesWhileChargingDefaultsKey = "BreathesWhileCharging"
     /// The Morse message typed last, put back in the field at launch.
     private static let morseTextDefaultsKey = "MorseText"
+    private static let previewFinishDefaultsKey = "PreviewFinish"
+
+    /// The finish the live view shows: the one picked in the panel, or else this Mac's own.
+    private static var previewFinish: MacFinish {
+        switch UserDefaults.standard.string(forKey: previewFinishDefaultsKey) {
+        case "silver": .silver
+        case "spaceBlack": .spaceBlack
+        default: MacFinish.current() ?? .spaceBlack
+        }
+    }
     /// The Morse loop switch: on, a message repeats until it's stopped.
     private static let morseLoopsDefaultsKey = "MorseLoops"
     private var morseLoops = UserDefaults.standard.bool(forKey: StatusItemController.morseLoopsDefaultsKey)
@@ -155,6 +165,9 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         panel.onMorseLoopsChanged = { [weak self] in self?.setMorseLoops($0) }
         panel.onMorseStop = { [weak self] in self?.stopMorse() }
         panel.onMorseTextChanged = { UserDefaults.standard.set($0, forKey: Self.morseTextDefaultsKey) }
+        panel.onPreviewFinishChanged = { finish in
+            UserDefaults.standard.set(finish == .silver ? "silver" : "spaceBlack", forKey: Self.previewFinishDefaultsKey)
+        }
         panel.setMorseText(UserDefaults.standard.string(forKey: Self.morseTextDefaultsKey) ?? "SOS")
         // So the play button turns back from stop as soon as a message sent once is done.
         controller.onMorseEnded = { [weak self] in self?.refresh() }

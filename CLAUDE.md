@@ -289,7 +289,8 @@ The panel's order is the user's: the LogoLight switch (then called Backlight) fi
 disable it"), then the live view, then the brightness slider (its own card), then the effects.
 The live view is drawn as the lid of this MacBook Pro in its real proportions and
 its own finish, space black or silver (`MacFinish`, read from the device tree's `housing-color` and
-Launch Services' device types). They also asked for a live view "so fully synced up": `LogoPreview` shows
+Launch Services' device types), which the panel's segmented picker can switch to the other one
+(`PreviewFinish` in the defaults, read once at launch). They also asked for a live view "so fully synced up": `LogoPreview` shows
 `LogoController.liveGlow`, read from the hardware on each frame (a display link, at 60 Hz) while
 the menu is open. With the menu closed, only a 10 s refresh runs, which keeps the menu bar icon in
 step with changes made elsewhere (every second while the menu is open).

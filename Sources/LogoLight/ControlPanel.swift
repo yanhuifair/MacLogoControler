@@ -25,6 +25,8 @@ final class ControlPanel: NSView {
     var onMorseLoopsChanged: ((Bool) -> Void)?
     /// The message edited (to remember it for next time).
     var onMorseTextChanged: ((String) -> Void)?
+    /// The finish picked for the live view (to remember it for next time).
+    var onPreviewFinishChanged: ((MacFinish) -> Void)?
 
     /// The panel is as wide and as tall as its content wants (the effect tabs across one row are what make
     /// it wide); this is the least it takes, so a panel without them still fits the menu's own items.
@@ -37,7 +39,7 @@ final class ControlPanel: NSView {
     /// `finish` is the colour of this Mac's case, which the live view copies.
     init(finish: MacFinish = .spaceBlack) {
         let preview = LogoPreview(finish: finish)
-        let model = PanelModel()
+        let model = PanelModel(finish: finish)
         self.preview = preview
         self.model = model
         host = NSHostingView(rootView: PanelContent(model: model, preview: preview))
@@ -60,6 +62,7 @@ final class ControlPanel: NSView {
         model.onMorseStop = { [weak self] in self?.onMorseStop?() }
         model.onMorseLoopsChanged = { [weak self] in self?.onMorseLoopsChanged?($0) }
         model.onMorseTextChanged = { [weak self] in self?.onMorseTextChanged?($0) }
+        model.onFinishChanged = { [weak self] in self?.onPreviewFinishChanged?($0) }
     }
 
     @available(*, unavailable)
@@ -160,6 +163,8 @@ private final class PanelModel {
     var brightness: Double
     /// The message typed, which is the panel's while it's being edited.
     var morseText = "SOS"
+    /// The finish the live view is painted in: this Mac's, unless the user picked the other.
+    var finish: MacFinish
 
     var onLogoSwitched: ((Bool) -> Void)?
     var onBrightnessChanged: ((Double) -> Void)?
@@ -170,10 +175,12 @@ private final class PanelModel {
     var onMorseStop: (() -> Void)?
     var onMorseLoopsChanged: ((Bool) -> Void)?
     var onMorseTextChanged: ((String) -> Void)?
+    var onFinishChanged: ((MacFinish) -> Void)?
 
     private var isDraggingBrightness = false
 
-    init() {
+    init(finish: MacFinish) {
+        self.finish = finish
         // Nothing is known until the first update, which always applies: an empty panel is drawn once.
         let status = LogoStatus(isSupported: false, setting: nil, source: .daemon, isLit: false, outputLevel: 0)
         let state = PanelState(status: status, canControlDirectly: false, effect: .none, brightness: 1)
@@ -254,6 +261,12 @@ private final class PanelModel {
         morseText = String(text.prefix(MorseCode.maxLength))
     }
 
+    func setFinish(_ finish: MacFinish) {
+        guard finish != self.finish else { return }
+        self.finish = finish
+        onFinishChanged?(finish)
+    }
+
     func editMorse(_ text: String) {
         setMorseText(text)
         onMorseTextChanged?(morseText)
@@ -290,10 +303,23 @@ private struct PanelContent: View {
 
             if state.isSupported {
                 PanelCard {
-                    LogoPreviewView(preview: preview)
-                        .frame(height: LogoPreview.lidSize.height)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 9)
+                    VStack(spacing: 10) {
+                        LogoPreviewView(preview: preview, finish: model.finish)
+                            .frame(height: LogoPreview.lidSize.height)
+                            .frame(maxWidth: .infinity)
+                        // Silver and space black, as the MacBook Pro comes: the one this Mac is, unless the
+                        // user would rather see the other.
+                        Picker("Preview finish", selection: Binding(get: { model.finish },
+                                                                    set: { model.setFinish($0) })) {
+                            Text("Silver").tag(MacFinish.silver)
+                            Text("Space Black").tag(MacFinish.spaceBlack)
+                        }
+                        .pickerStyle(.segmented)
+                        .labelsHidden()
+                        .frame(width: 200)
+                        .accessibilityLabel("Preview finish")
+                    }
+                    .padding(.vertical, 9)
                 }
             }
 
@@ -558,9 +584,10 @@ private struct GlassMaterial: View {
 /// Shows the panel's live view, which is AppKit's: it draws the lid with the logo's light on it.
 private struct LogoPreviewView: NSViewRepresentable {
     let preview: LogoPreview
+    let finish: MacFinish
 
     func makeNSView(context: Context) -> LogoPreview { preview }
-    func updateNSView(_ view: LogoPreview, context: Context) {}
+    func updateNSView(_ view: LogoPreview, context: Context) { view.setFinish(finish) }
 }
 
 private extension View {
@@ -593,44 +620,57 @@ private final class LogoPreview: NSView {
         wantsLayer = true
         heightAnchor.constraint(equalToConstant: Self.lidSize.height).isActive = true
 
-        // Anodised aluminium: a faint sheen toward the top, and a fine machined edge.
-        let (top, bottom, edge, markColor, markOpacity): (NSColor, NSColor, NSColor, NSColor, Float) = switch finish {
-        case .spaceBlack:
-            (NSColor(srgbRed: 0.17, green: 0.17, blue: 0.18, alpha: 1), NSColor(srgbRed: 0.11, green: 0.11, blue: 0.12, alpha: 1),
-             NSColor(white: 1, alpha: 0.14), .white, 0.08)
-        case .silver:
-            (NSColor(srgbRed: 0.86, green: 0.865, blue: 0.87, alpha: 1), NSColor(srgbRed: 0.72, green: 0.725, blue: 0.735, alpha: 1),
-             NSColor(white: 0, alpha: 0.16), .black, 0.12)
-        }
-        lid.colors = [top.cgColor, bottom.cgColor]
         lid.cornerRadius = 7
         lid.cornerCurve = .continuous
         lid.borderWidth = 0.5
-        lid.borderColor = edge.cgColor
         layer?.addSublayer(lid)
 
-        let symbol = NSImage(systemSymbolName: "apple.logo", accessibilityDescription: nil)
-            ?? NSImage(systemSymbolName: "lightbulb.fill", accessibilityDescription: nil)
-        func logoImage(_ color: NSColor) -> NSImage? {
-            symbol?.withSymbolConfiguration(
-                NSImage.SymbolConfiguration(pointSize: Self.logoSize.height, weight: .regular)
-                    .applying(NSImage.SymbolConfiguration(paletteColors: [color])))
-        }
         for layer in [mark, logo] {
             layer.contentsGravity = .resizeAspect
             lid.addSublayer(layer)
         }
-        mark.contents = logoImage(markColor)
-        mark.opacity = markOpacity
-        logo.contents = logoImage(.white)
+        logo.contents = Self.logoImage(.white)
         logo.shadowColor = NSColor.white.cgColor
         logo.shadowOffset = .zero
         logo.shadowRadius = 7
+        setFinish(finish)
         show(glow: 0)
 
         setAccessibilityElement(true)
         setAccessibilityRole(.image)
         setAccessibilityLabel("Live view of the Apple logo")
+    }
+
+    /// Paints the lid in `finish`, keeping the logo's light as it is: anodised aluminium, with a faint
+    /// sheen toward the top, a fine machined edge, and the unlit mark in the metal.
+    func setFinish(_ finish: MacFinish) {
+        guard finish != shownFinish else { return }
+        shownFinish = finish
+        let (top, bottom, edge, markColor, markOpacity): (NSColor, NSColor, NSColor, NSColor, Float) = switch finish {
+        case .spaceBlack:
+            (NSColor(srgbRed: 0.17, green: 0.17, blue: 0.18, alpha: 1),
+             NSColor(srgbRed: 0.11, green: 0.11, blue: 0.12, alpha: 1),
+             NSColor(white: 1, alpha: 0.14), .white, 0.08)
+        case .silver:
+            (NSColor(srgbRed: 0.86, green: 0.865, blue: 0.87, alpha: 1),
+             NSColor(srgbRed: 0.72, green: 0.725, blue: 0.735, alpha: 1),
+             NSColor(white: 0, alpha: 0.16), .black, 0.12)
+        }
+        withoutAnimation {
+            lid.colors = [top.cgColor, bottom.cgColor]
+            lid.borderColor = edge.cgColor
+            mark.contents = Self.logoImage(markColor)
+            mark.opacity = markOpacity
+        }
+    }
+
+    /// The Apple logo in `color`, at the size it sits on the lid.
+    private static func logoImage(_ color: NSColor) -> NSImage? {
+        let symbol = NSImage(systemSymbolName: "apple.logo", accessibilityDescription: nil)
+            ?? NSImage(systemSymbolName: "lightbulb.fill", accessibilityDescription: nil)
+        return symbol?.withSymbolConfiguration(
+            NSImage.SymbolConfiguration(pointSize: logoSize.height, weight: .regular)
+                .applying(NSImage.SymbolConfiguration(paletteColors: [color])))
     }
 
     @available(*, unavailable)
@@ -650,8 +690,9 @@ private final class LogoPreview: NSView {
         }
     }
 
-    /// The glow last drawn.
+    /// The glow last drawn, and the finish the lid is painted in.
     private var shownGlow: Double?
+    private var shownFinish: MacFinish?
 
     /// Called on every frame while the menu is open. A change too small to see isn't drawn, so a
     /// steady logo costs nothing.
