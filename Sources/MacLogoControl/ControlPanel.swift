@@ -1188,49 +1188,69 @@ enum PanelRenderer {
                       ("fallback", state(.on, canControlDirectly: false)), ("unsupported", state(.off, isSupported: false))]
         for (name, state) in states {
             for (suffix, appearance) in [("dark", NSAppearance.Name.darkAqua), ("light", .aqua)] {
-                write(state, appearance: appearance, options: options, to: "\(folder)/\(name)-\(suffix).png")
+                picture { write(state, appearance: appearance, options: options, to: "\(folder)/\(name)-\(suffix).png") }
             }
         }
         for (suffix, appearance) in [("dark", NSAppearance.Name.darkAqua), ("light", .aqua)] {
-            write(on, finish: .silver, appearance: appearance, options: options, to: "\(folder)/on-silver-\(suffix).png")
+            picture { write(on, finish: .silver, appearance: appearance, options: options,
+                            to: "\(folder)/on-silver-\(suffix).png") }
         }
         if options.menu {
             for (name, lid) in [("menu", MacLid.sixteen), ("menu-14", MacLid.fourteen)] {
                 for (suffix, appearance) in [("dark", NSAppearance.Name.darkAqua), ("light", .aqua)] {
-                    let panel = ControlPanel(finish: .spaceBlack, lid: lid)
-                    panel.setMorseText("SOS")
-                    panel.update(on)
-                    panel.showGlow(options.glow)
-                    panel.settle()
-                    draw(MenuPicture(panel: panel, isDark: appearance == .darkAqua), appearance: appearance, options: options,
-                         background: nil, to: "\(folder)/\(name)-\(suffix).png")
+                    picture {
+                        let panel = ControlPanel(finish: .spaceBlack, lid: lid)
+                        panel.setMorseText("SOS")
+                        panel.update(on)
+                        panel.showGlow(options.glow)
+                        panel.settle()
+                        draw(MenuPicture(panel: panel, isDark: appearance == .darkAqua), appearance: appearance,
+                             options: options, background: nil, to: "\(folder)/\(name)-\(suffix).png")
+                    }
                 }
             }
         }
         for glow in options.glows {
             for (name, finish) in [("black", MacFinish.spaceBlack), ("silver", .silver)] {
-                let preview = LogoPreview(finish: finish)
-                preview.frame = NSRect(origin: .zero, size: LogoPreview.renderedLidSize)
-                preview.show(glow: glow)
-                draw(preview, options: options, background: nil,
-                     to: "\(folder)/live-\(name)-\(Int((glow * 100).rounded())).png")
+                picture {
+                    let preview = LogoPreview(finish: finish)
+                    preview.frame = NSRect(origin: .zero, size: LogoPreview.renderedLidSize)
+                    preview.show(glow: glow)
+                    draw(preview, options: options, background: nil,
+                         to: "\(folder)/live-\(name)-\(Int((glow * 100).rounded())).png")
+                }
             }
         }
         if options.light {
-            let preview = LogoPreview(finish: .spaceBlack)
-            preview.frame = NSRect(origin: .zero, size: LogoPreview.renderedLidSize)
-            preview.showLightAlone()
-            draw(preview, options: options, background: nil, to: "\(folder)/live-light.png")
+            picture {
+                let preview = LogoPreview(finish: .spaceBlack)
+                preview.frame = NSRect(origin: .zero, size: LogoPreview.renderedLidSize)
+                preview.showLightAlone()
+                draw(preview, options: options, background: nil, to: "\(folder)/live-light.png")
+            }
         }
         if options.icon, let symbol = NSImage(systemSymbolName: MenuBarIcon.symbolName, accessibilityDescription: nil) {
             // The status item's button draws its template image at its own size, in the menu bar's text colour.
-            let icon = NSImageView(image: symbol)
-            icon.contentTintColor = .black
-            icon.frame = NSRect(origin: .zero, size: symbol.size)
-            let container = FlippedView(frame: icon.frame)
-            container.addSubview(icon)
-            draw(container, options: options, background: nil, to: "\(folder)/icon-on.png")
+            picture {
+                let icon = NSImageView(image: symbol)
+                icon.contentTintColor = .black
+                icon.frame = NSRect(origin: .zero, size: symbol.size)
+                let container = FlippedView(frame: icon.frame)
+                container.addSubview(icon)
+                draw(container, options: options, background: nil, to: "\(folder)/icon-on.png")
+            }
         }
+    }
+
+    /// Draws one picture and lets go of it before the next is drawn.
+    ///
+    /// The renderer runs a plain loop rather than a run loop, so nothing drains AppKit's autorelease pool
+    /// while it goes: every `NSBitmapImageRep` and its data stayed alive until the process ended. At the
+    /// media script's scale 6 that was tens of gigabytes by the 70th of the 101 glow levels, and the system
+    /// killed the process. Nothing else drains the pool here, because the app never returns to a run loop
+    /// between pictures.
+    private static func picture(_ draw: () -> Void) {
+        autoreleasepool(invoking: draw)
     }
 
     private static func write(_ state: PanelState, finish: MacFinish = .spaceBlack, appearance: NSAppearance.Name,
