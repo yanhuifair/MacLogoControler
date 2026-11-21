@@ -18,7 +18,6 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     private var lidObserver: LidObserver?
     private let sleepBlocker = LidSleepBlocker()
     private static let log = Logger(subsystem: Bundle.main.bundleIdentifier ?? "LogoLight", category: "lid")
-    private let launchAtLoginItem = NSMenuItem()
 
     private var status = LogoStatus.unsupported
     /// Waiting for a password or `sudo` (the fallback path), or for the menu to close before a
@@ -165,6 +164,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         panel.onFollowsBatteryChanged = { [weak self] in self?.setFollowsBattery($0) }
         panel.onFollowsDisplayBrightnessChanged = { [weak self] in self?.setFollowsDisplayBrightness($0) }
         panel.onLightsWithLidClosedChanged = { [weak self] in self?.setLightsWithLidClosed($0) }
+        panel.onLaunchAtLoginChanged = { [weak self] in self?.setLaunchAtLogin($0) }
         panel.onBreathesWhileChargingChanged = { [weak self] in self?.setBreathesWhileCharging($0) }
         panel.onEffectChosen = { [weak self] in self?.chooseEffect($0) }
         panel.onMorsePlay = { [weak self] in self?.playMorse($0) }
@@ -187,17 +187,13 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         passwordlessItem.action = #selector(togglePasswordless)
         passwordlessItem.toolTip = "Turn the logo on and off without entering your password. Uncheck to ask for it again."
 
-        launchAtLoginItem.title = "Launch at Login"
-        launchAtLoginItem.target = self
-        launchAtLoginItem.action = #selector(toggleLaunchAtLogin)
-
         // No ⌘Q: its shortcut column would make the whole menu wider than the panel.
         let quitItem = NSMenuItem(title: "Quit LogoLight", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "")
 
         menu.items = [
             panelItem,
             .separator(),
-            passwordlessItem, launchAtLoginItem,
+            passwordlessItem,
             .separator(),
             quitItem,
         ]
@@ -312,7 +308,8 @@ final class StatusItemController: NSObject, NSMenuDelegate {
                    followsDisplayBrightness: controller.followsDisplayBrightness,
                    breathesWhileCharging: controller.breathesWhileCharging,
                    lightsWithLidClosed: controller.lightsWithLidClosed,
-                   showsLidClosedOption: controller.canLightWithLidClosed, isBusy: isBusy, morse: controller.morse,
+                   showsLidClosedOption: controller.canLightWithLidClosed,
+                   launchesAtLogin: isLaunchAtLoginEnabled, isBusy: isBusy, morse: controller.morse,
                    morseLoops: morseLoops)
     }
 
@@ -328,7 +325,6 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         passwordlessItem.state = isPasswordlessEnabled ? .on : .off
         passwordlessItem.isEnabled = status.isSupported && !isBusy
         updateSleepBlocker()
-        launchAtLoginItem.state = isLaunchAtLoginEnabled ? .on : .off
         updateControl(state)
     }
 
@@ -646,9 +642,10 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         updateMenu()
     }
 
-    @objc private func toggleLaunchAtLogin() {
+    /// The panel's Launch at Login switch.
+    private func setLaunchAtLogin(_ launch: Bool) {
         do {
-            try LaunchAtLogin.setEnabled(!LaunchAtLogin.isEnabled)
+            try LaunchAtLogin.setEnabled(launch)
         } catch {
             report(error, title: "Couldn't change Launch at Login")
         }

@@ -29,6 +29,8 @@ public struct PanelState: Equatable, Sendable {
     /// is shown: it needs corebrightnessd, which the app only has with direct control.
     public var lightsWithLidClosed: Bool
     public var showsLidClosedOption: Bool
+    /// Whether the app starts with the Mac (the Launch at Login switch).
+    public var launchesAtLogin: Bool
     /// The Morse message being sent, if any.
     public var morse: MorseMessage?
     /// Whether Morse code repeats until it's stopped (the loop switch).
@@ -45,7 +47,8 @@ public struct PanelState: Equatable, Sendable {
     public init(status: LogoStatus, requested: LogoIllumination? = nil, canControlDirectly: Bool,
                 canFollowSound: Bool = true, effect: LogoEffect, brightness: Double, followsBattery: Bool = false,
                 followsDisplayBrightness: Bool = false, breathesWhileCharging: Bool = false,
-                lightsWithLidClosed: Bool = false, showsLidClosedOption: Bool = true, isBusy: Bool = false,
+                lightsWithLidClosed: Bool = false, showsLidClosedOption: Bool = true,
+                launchesAtLogin: Bool = false, isBusy: Bool = false,
                 morse: MorseMessage? = nil, morseLoops: Bool = false) {
         let setting = requested ?? status.setting
         isSupported = status.isSupported
@@ -60,6 +63,7 @@ public struct PanelState: Equatable, Sendable {
         self.breathesWhileCharging = breathesWhileCharging
         self.lightsWithLidClosed = lightsWithLidClosed
         self.showsLidClosedOption = showsLidClosedOption && showsAdjustments
+        self.launchesAtLogin = launchesAtLogin
         self.morse = canControlDirectly ? morse : nil
         self.morseLoops = morseLoops
         message = status.isSupported ? nil : "Needs a MacBook Pro with PROLED XDR Display"

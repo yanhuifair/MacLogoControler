@@ -25,7 +25,7 @@
     <td width="360" align="center" valign="middle">
       <picture>
         <source media="(prefers-color-scheme: dark)" srcset="docs/media/menu-breathe-dark.gif">
-        <img src="docs/media/menu-breathe-light.gif" width="320" alt="LogoLight's whole menu with the LogoLight switch on and Breathe switched on: the live view of the lid shows the Apple logo slowly glowing, fading out and glowing again, above the brightness slider, the Battery and Charging switches, the effect switches (Breathe, Pulse, Heartbeat and Sound) and Morse code. Under them, the menu's own items: Disable Password, checked; Lit with Lid Closed, on power or with a display; Launch at Login, checked; and Quit LogoLight.">
+        <img src="docs/media/menu-breathe-light.gif" width="320" alt="LogoLight's whole menu with the LogoLight switch on and Breathe switched on: the live view of the lid shows the Apple logo slowly glowing, fading out and glowing again, above the brightness slider, the Battery and Charging switches, the effect switches (Breathe, Pulse, Heartbeat and Sound) and Morse code. Under them, a General group with the Lid Closed and Launch at Login switches, then the menu's own items: Disable Password, checked, and Quit LogoLight.">
       </picture>
     </td>
     <td valign="middle">

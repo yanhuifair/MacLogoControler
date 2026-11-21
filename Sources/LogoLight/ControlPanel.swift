@@ -18,6 +18,7 @@ final class ControlPanel: NSView {
     var onFollowsDisplayBrightnessChanged: ((Bool) -> Void)?
     var onBreathesWhileChargingChanged: ((Bool) -> Void)?
     var onLightsWithLidClosedChanged: ((Bool) -> Void)?
+    var onLaunchAtLoginChanged: ((Bool) -> Void)?
     var onEffectChosen: ((LogoEffect) -> Void)?
     /// Play pressed (or Return in the field), with the message typed.
     var onMorsePlay: ((String) -> Void)?
@@ -61,6 +62,7 @@ final class ControlPanel: NSView {
         model.onFollowsDisplayBrightnessChanged = { [weak self] in self?.onFollowsDisplayBrightnessChanged?($0) }
         model.onBreathesWhileChargingChanged = { [weak self] in self?.onBreathesWhileChargingChanged?($0) }
         model.onLightsWithLidClosedChanged = { [weak self] in self?.onLightsWithLidClosedChanged?($0) }
+        model.onLaunchAtLoginChanged = { [weak self] in self?.onLaunchAtLoginChanged?($0) }
         model.onEffectChosen = { [weak self] in self?.onEffectChosen?($0) }
         model.onMorsePlay = { [weak self] in self?.onMorsePlay?($0) }
         model.onMorseStop = { [weak self] in self?.onMorseStop?() }
@@ -166,6 +168,7 @@ private final class PanelModel {
     var followsDisplayBrightness: Bool
     var breathesWhileCharging: Bool
     var lightsWithLidClosed: Bool
+    var launchesAtLogin: Bool
     var effect: LogoEffect
     var loops: Bool
     /// The brightness the slider shows; not the app's while it's being dragged.
@@ -181,6 +184,7 @@ private final class PanelModel {
     var onFollowsDisplayBrightnessChanged: ((Bool) -> Void)?
     var onBreathesWhileChargingChanged: ((Bool) -> Void)?
     var onLightsWithLidClosedChanged: ((Bool) -> Void)?
+    var onLaunchAtLoginChanged: ((Bool) -> Void)?
     var onEffectChosen: ((LogoEffect) -> Void)?
     var onMorsePlay: ((String) -> Void)?
     var onMorseStop: (() -> Void)?
@@ -201,6 +205,7 @@ private final class PanelModel {
         followsDisplayBrightness = state.followsDisplayBrightness
         breathesWhileCharging = state.breathesWhileCharging
         lightsWithLidClosed = state.lightsWithLidClosed
+        launchesAtLogin = state.launchesAtLogin
         effect = state.effect
         loops = state.morseLoops
         brightness = state.brightness
@@ -213,6 +218,7 @@ private final class PanelModel {
         followsDisplayBrightness = state.followsDisplayBrightness
         breathesWhileCharging = state.breathesWhileCharging
         lightsWithLidClosed = state.lightsWithLidClosed
+        launchesAtLogin = state.launchesAtLogin
         effect = state.effect
         loops = state.morseLoops
         if !isDraggingBrightness { brightness = state.brightness }
@@ -252,6 +258,11 @@ private final class PanelModel {
         followsBattery = on
         if on { followsDisplayBrightness = false }
         onFollowsBatteryChanged?(on)
+    }
+
+    func flipLaunchAtLogin(_ on: Bool) {
+        launchesAtLogin = on
+        onLaunchAtLoginChanged?(on)
     }
 
     func flipLightsWithLidClosed(_ on: Bool) {
@@ -363,6 +374,37 @@ private struct PanelContent: View {
                     morseCard
                 }
                 .padding(.top, PanelMetrics.headerSpacing)
+
+                VStack(spacing: PanelMetrics.headerToCard) {
+                    GroupHeader("General")
+                    PanelCard {
+                        if state.showsLidClosedOption {
+                            PanelRow(title: "Lid Closed", icon: .init(symbol: "laptopcomputer"),
+                                     isGreyed: !state.canAdjust,
+                                     help: "Keep the logo lit when you close the lid, on power or with an "
+                                         + "external display. On power, your Mac stays awake with the lid closed. "
+                                         + "The keyboard stays dark.") {
+                                Toggle("Lit with lid closed", isOn: Binding(get: { model.lightsWithLidClosed },
+                                                                           set: { model.flipLightsWithLidClosed($0) }))
+                                    .labelsHidden()
+                                    .toggleStyle(.switch)
+                                    .controlSize(.small)
+                            }
+
+                            RowSeparator()
+                        }
+
+                        PanelRow(title: "Launch at Login", icon: .init(symbol: "power"),
+                                 help: "Start LogoLight with your Mac, so the logo comes on by itself after a restart.") {
+                            Toggle("Launch at Login", isOn: Binding(get: { model.launchesAtLogin },
+                                                                    set: { model.flipLaunchAtLogin($0) }))
+                                .labelsHidden()
+                                .toggleStyle(.switch)
+                                .controlSize(.small)
+                        }
+                    }
+                }
+                .padding(.top, PanelMetrics.headerSpacing)
             }
 
             if let message = state.message {
@@ -446,21 +488,6 @@ private struct PanelContent: View {
                     .labelsHidden()
                     .toggleStyle(.switch)
                     .controlSize(.small)
-            }
-
-            if state.showsLidClosedOption {
-                RowSeparator()
-
-                PanelRow(title: "Lid Closed", icon: .init(symbol: "laptopcomputer"),
-                         isGreyed: !state.canAdjust,
-                         help: "Keep the logo lit when you close the lid, on power or with an external display. "
-                             + "On power, your Mac stays awake with the lid closed. The keyboard stays dark.") {
-                    Toggle("Lit with lid closed",
-                           isOn: Binding(get: { model.lightsWithLidClosed }, set: { model.flipLightsWithLidClosed($0) }))
-                        .labelsHidden()
-                        .toggleStyle(.switch)
-                        .controlSize(.small)
-                }
             }
         }
     }
@@ -1138,7 +1165,6 @@ enum PanelRenderer {
             var y = panel.frame.maxY
             y = addSeparator(at: y)
             y = addItem("Disable Password", checked: true, at: y)
-            y = addItem("Launch at Login", checked: true, at: y)
             y = addSeparator(at: y)
             y = addItem("Quit LogoLight", at: y)
             setFrameSize(NSSize(width: panel.bounds.width, height: y + Self.padding))
