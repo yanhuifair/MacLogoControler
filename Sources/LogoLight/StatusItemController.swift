@@ -219,9 +219,6 @@ final class StatusItemController: NSObject, NSMenuDelegate {
 
     func menuWillOpen(_ menu: NSMenu) {
         isMenuOpen = true
-        // A menu item's view doesn't take the menu's appearance from its window, and SwiftUI then draws
-        // the panel in the light whatever the menu is: it's told here, as the menu opens.
-        panel.adopt(NSApp.effectiveAppearance)
         readMenuSettings()
         refresh()
         scheduleRefresh(every: 1)
