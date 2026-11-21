@@ -941,21 +941,18 @@ private final class LogoPreview: NSView {
     static let width: CGFloat = PanelMetrics.liveViewWidth
     static var height: CGFloat { (width / geometry(for: .sixteen).aspect).rounded() }
 
-    /// One lid's shape, off the same Apple shots the lid is drawn from: its proportions, and how
-    /// tall the printed logo is on it. The 14-inch is a shade squarer and carries the same-size
-    /// logo on a smaller lid, so the mark is larger on it.
+    /// One lid's shape, off the same Apple shots the lid is drawn from. The 14-inch is a shade
+    /// squarer, and a physically smaller machine.
     private struct LidGeometry {
         let aspect: CGFloat
-        /// The printed logo's height, as a share of the lid's — the light's glow is sized by it.
-        let mark: CGFloat
         /// The whole lid's size next to the 16-inch's, off Apple's dimensions (31.26 cm across,
         /// against its 35.57) — the 14-inch is drawn this much smaller inside the same frame.
         let scale: CGFloat
     }
     private static func geometry(for lid: MacLid) -> LidGeometry {
         switch lid {
-        case .fourteen: LidGeometry(aspect: 1.436, mark: 0.216, scale: 0.879)
-        case .sixteen: LidGeometry(aspect: 1.456, mark: 0.192, scale: 1)
+        case .fourteen: LidGeometry(aspect: 1.436, scale: 0.879)
+        case .sixteen: LidGeometry(aspect: 1.456, scale: 1)
         }
     }
     /// The lid is Apple's own shot of it, knocked out of its plate (see `scripts/make-lid-images.py`)
@@ -979,8 +976,6 @@ private final class LogoPreview: NSView {
         layer?.addSublayer(lid)
         lid.addSublayer(logo)
         logo.contentsGravity = .resize
-        logo.shadowColor = NSColor.white.cgColor
-        logo.shadowOffset = .zero
         setFinish(finish)
         show(glow: 0)
 
@@ -1011,7 +1006,6 @@ private final class LogoPreview: NSView {
         // lid's own height, not the frame's.
         let size = NSSize(width: (bounds.width * g.scale).rounded(),
                           height: (bounds.width * g.scale / g.aspect).rounded())
-        let height = size.height
         withoutAnimation {
             let lidFrame = NSRect(x: (bounds.width - size.width) / 2,
                                   y: (frameHeight - size.height) / 2,
@@ -1019,10 +1013,9 @@ private final class LogoPreview: NSView {
             lid.frame = lidFrame
             // The light is the printed mark's own shape, cut from the same shot and kept on the
             // shot's own canvas — so it rides the lid frame exactly, logo centred where the
-            // photograph put it, at any size the lid is drawn at.
+            // photograph put it, at any size the lid is drawn at. No bloom: the shot carries
+            // its own light, and the mark alone is what comes on.
             logo.frame = CGRect(origin: .zero, size: lidFrame.size)
-            // Its bloom, sized as on a real lid: as wide as the mark is tall, a third of it.
-            logo.shadowRadius = height * g.mark * 0.30
         }
     }
 
@@ -1088,7 +1081,6 @@ private final class LogoPreview: NSView {
         shownGlow = glow
         withoutAnimation {
             logo.opacity = Float(glow)
-            logo.shadowOpacity = Float(glow)
         }
     }
 
@@ -1106,8 +1098,8 @@ private final class LogoPreview: NSView {
 /// Optional settings, for pictures of the app (e.g. the website's). Without them the output is as before:
 /// - `LOGOLIGHT_RENDER_SCALE`: pixels per point, 2 by default, up to 16 (e.g. 4 for a larger, crisp picture,
 ///   or 14 for a live view about 800 points wide on a Retina screen). With a scale given, layer images and
-///   shadows are drawn as a screen at that scale draws them: the logo sharp, and its glow as wide as in the
-///   menu. (Without one, the logo is drawn at the screen's scale and its glow in pixels, as before.)
+///   shadows are drawn as a screen at that scale draws them, so the logo stays sharp. (Without one, they are
+///   drawn at the screen's scale, as before.)
 /// - `LOGOLIGHT_RENDER_TRANSPARENT`: leaves the background clear instead of a menu-like grey, so the
 ///   picture can be placed on any backdrop (the cards are translucent, as in the real menu).
 /// - `LOGOLIGHT_RENDER_GLOW`, `LOGOLIGHT_RENDER_BRIGHTNESS`, `LOGOLIGHT_RENDER_EFFECT`: the live view's
@@ -1116,10 +1108,9 @@ private final class LogoPreview: NSView {
 /// - `LOGOLIGHT_RENDER_GLOWS`: glow levels, e.g. `0,0.5,1`, to also draw the live view alone at each
 ///   level, in both finishes (`live-black-50.png`, `live-silver-50.png`). It also prints where the lid is
 ///   in each panel, to place those pictures over it.
-/// - `LOGOLIGHT_RENDER_LIGHT`: also draws the logo's light alone, fully lit, lid-sized on clear: with its glow
-///   (`live-light.png`) and without it (`live-light-shape.png`). Over `live-black-0.png`, the first at opacity g
-///   with the second on top, both in a group at opacity g, give the live view at glow g, as `show(glow:)` draws
-///   it (the glow's own opacity is g as well, so it shows at g²). The light is the same in both finishes.
+/// - `LOGOLIGHT_RENDER_LIGHT`: also draws the logo's light alone, fully lit, lid-sized on clear
+///   (`live-light.png`). Over `live-black-0.png` at opacity g it gives the live view at glow g, as `show(glow:)`
+///   draws it: the light is the mark alone, with no bloom. It is the same in both finishes.
 /// - `LOGOLIGHT_RENDER_ICON`: also draws the menu bar icon while the logo is on (`icon-on.png`, black
 ///   on clear, as the template the menu bar tints).
 /// - `LOGOLIGHT_RENDER_MENU`: also draws the whole menu with the logo on (`menu-dark.png`, `menu-light.png`):
@@ -1226,12 +1217,10 @@ enum PanelRenderer {
             }
         }
         if options.light {
-            for (name, withGlow) in [("live-light", true), ("live-light-shape", false)] {
-                let preview = LogoPreview(finish: .spaceBlack)
-                preview.frame = NSRect(origin: .zero, size: LogoPreview.renderedLidSize)
-                preview.showLightAlone(withGlow: withGlow)
-                draw(preview, options: options, background: nil, to: "\(folder)/\(name).png")
-            }
+            let preview = LogoPreview(finish: .spaceBlack)
+            preview.frame = NSRect(origin: .zero, size: LogoPreview.renderedLidSize)
+            preview.showLightAlone()
+            draw(preview, options: options, background: nil, to: "\(folder)/live-light.png")
         }
         if options.icon, let symbol = NSImage(systemSymbolName: MenuBarIcon.symbolName, accessibilityDescription: nil) {
             // The status item's button draws its template image at its own size, in the menu bar's text colour.
@@ -1457,11 +1446,10 @@ private extension LogoPreview {
                       width: size.width, height: size.height)
     }
 
-    /// Leaves only the logo's light, fully lit, with or without its glow: no lid at all.
-    func showLightAlone(withGlow: Bool) {
+    /// Leaves only the logo's light, fully lit: no lid at all.
+    func showLightAlone() {
         lid.contents = nil
         logo.opacity = 1
-        logo.shadowOpacity = withGlow ? 1 : 0
     }
 }
 #endif
