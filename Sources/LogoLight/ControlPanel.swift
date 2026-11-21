@@ -343,9 +343,10 @@ private struct PanelContent: View {
             if state.isSupported {
                 PanelCard {
                     VStack(spacing: 10) {
+                        // As wide as the card, its sides the card's own padding away, and tall as its
+                        // shape makes it: no room left over either side.
                         LogoPreviewView(preview: preview, finish: model.finish)
-                            .frame(height: LogoPreview.height)
-                            .frame(maxWidth: .infinity)
+                            .frame(width: LogoPreview.width, height: LogoPreview.height)
                         // Silver and space black, as the MacBook Pro comes: the one this Mac is, unless the
                         // user would rather see the other. In the tabs' bar, where the picker always was.
                         OptionTabs(options: [
@@ -768,11 +769,9 @@ private final class LogoPreview: NSView {
     /// The 14-inch MacBook Pro's lid is 31.3 × 22.1 cm, and the live view is drawn to that shape at
     /// whatever height it's given.
     static let aspectRatio: CGFloat = 31.3 / 22.1
-    /// How tall the panel draws the live view.
-    static let height: CGFloat = 200
-    /// Its width at that height.
-    static var width: CGFloat { (height * aspectRatio).rounded() }
-
+    /// How the panel draws the live view: as wide as a card's inside, the lid's shape giving the height.
+    static let width: CGFloat = 392
+    static var height: CGFloat { (width / aspectRatio).rounded() }
     private let lid = CAGradientLayer()
     /// The logo as it looks unlit: polished metal in the lid, catching the light along a diagonal.
     private let mark = CAGradientLayer()
