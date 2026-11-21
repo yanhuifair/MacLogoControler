@@ -3,10 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>LogoLight: turn off or dim the MacBook Pro's glowing Apple logo</title>
+  <title>Mac Logo Control: turn off or dim the MacBook Pro's glowing Apple logo</title>
   <meta name="description" content="Turn off or dim the glowing Apple logo on the OLED MacBook Pro with PROLED XDR Display, let it breathe, pulse or beat like a heart, or glow with your music. A free, open-source menu bar app.">
   <meta name="robots" content="max-image-preview:large">
-  <link rel="alternate" type="text/plain" href="https://logolight.app/llms.txt" title="LogoLight, in plain text for AI assistants">
+  <link rel="alternate" type="text/plain" href="https://logolight.app/llms.txt" title="Mac Logo Control, in plain text for AI assistants">
   <meta name="color-scheme" content="light dark">
   <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#0c0c0e" media="(prefers-color-scheme: dark)">
@@ -17,15 +17,15 @@
   <link rel="stylesheet" href="style.css">
 
   <meta property="og:type" content="website">
-  <meta property="og:site_name" content="LogoLight">
+  <meta property="og:site_name" content="Mac Logo Control">
   <meta property="og:url" content="https://logolight.app/">
-  <meta property="og:title" content="LogoLight: turn off or dim the MacBook Pro's glowing Apple logo">
+  <meta property="og:title" content="Mac Logo Control: turn off or dim the MacBook Pro's glowing Apple logo">
   <meta property="og:description" content="A free, open-source menu bar app for the illuminated Apple logo on the back of the OLED MacBook Pro with PROLED XDR Display. Turn it off, set its brightness, let it breathe, pulse or beat like a heart, or glow with your music.">
   <meta property="og:image" content="https://logolight.app/og-130.jpg">
   <meta property="og:image:type" content="image/jpeg">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
-  <meta property="og:image:alt" content="LogoLight: Control your glowing Apple logo. Turn it off, dim it, let it breathe or beat like a heart, or glow with your music. Right from the menu bar. Beside the text, LogoLight's live view shows a large lid with the Apple logo glowing, next to its menu with the LogoLight switch and Breathe switched on, and the Battery and Charging switches under the brightness slider.">
+  <meta property="og:image:alt" content="Mac Logo Control: Control your glowing Apple logo. Turn it off, dim it, let it breathe or beat like a heart, or glow with your music. Right from the menu bar. Beside the text, Mac Logo Control's live view shows a large lid with the Apple logo glowing, next to its menu with the Mac Logo Control switch and Breathe switched on, and the Battery and Charging switches under the brightness slider.">
   <meta name="twitter:card" content="summary_large_image">
 
   <!-- Structured data for search engines and AI assistants: the app, and the FAQ below (keep the answers in step
@@ -39,13 +39,14 @@
         "@type": "WebSite",
         "@id": "https://logolight.app/#website",
         "url": "https://logolight.app/",
-        "name": "LogoLight",
+        "name": "Mac Logo Control",
         "inLanguage": "en"
       },
       {
         "@type": "SoftwareApplication",
         "@id": "https://logolight.app/#app",
-        "name": "LogoLight",
+        "name": "Mac Logo Control",
+        "alternateName": "LogoLight",
         "url": "https://logolight.app/",
         "description": "A free, open-source menu bar app for the illuminated Apple logo on the back of the MacBook Pro with PROLED XDR Display (the OLED MacBook Pro). Turn the logo off and on with a smooth fade, set its brightness, animate it with Breathe, Pulse or Heartbeat, let it breathe while the battery charges, or let it glow with the sound your Mac is playing. Includes a control for Control Center.",
         "applicationCategory": "UtilitiesApplication",
@@ -53,7 +54,7 @@
         "softwareRequirements": "MacBook Pro with PROLED XDR Display",
         "softwareVersion": "1.4.0",
         "datePublished": "2026-11-20",
-        "downloadUrl": "https://logolight.app/LogoLight.zip",
+        "downloadUrl": "https://logolight.app/MacLogoControl.zip",
         "installUrl": "https://logolight.app/#download",
         "image": "https://logolight.app/images/app-icon-256.png",
         "screenshot": "https://logolight.app/images/menu-on-light-130.png",
@@ -67,7 +68,7 @@
           "Sound: the logo glows with whatever the Mac is playing",
           "Keep the logo lit with the lid closed, on power or with an external display",
           "Live view of the lid in its own finish, space black or silver",
-          "A LogoLight switch for Control Center and the menu bar",
+          "A Mac Logo Control switch for Control Center and the menu bar",
           "Option-click the menu bar icon to toggle the logo",
           "Launch at Login"
         ],
@@ -75,7 +76,7 @@
         "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
         "license": "https://opensource.org/license/mit",
         "author": { "@type": "Person", "name": "Ark0N", "url": "https://github.com/Ark0N" },
-        "sameAs": ["https://github.com/Ark0N/LogoLight"]
+        "sameAs": ["https://github.com/Ark0N/MacLogoControl"]
       },
       {
         "@type": "FAQPage",
@@ -84,27 +85,27 @@
           {
             "@type": "Question",
             "name": "How do I turn off the Apple logo on my MacBook Pro?",
-            "acceptedAnswer": { "@type": "Answer", "text": "With LogoLight, flip the LogoLight switch at the top of its menu, or hold Option and click LogoLight in the menu bar. The logo fades out, and stays off even after you quit LogoLight or restart your Mac. Without LogoLight, Apple's documented way is a command in Terminal: sudo defaults write com.apple.CoreBrightness LEBacklightMode -int 0 turns the logo off, and sudo defaults delete com.apple.CoreBrightness LEBacklightMode turns it back on. Apple documents only on and off; LogoLight adds brightness and effects." }
+            "acceptedAnswer": { "@type": "Answer", "text": "With Mac Logo Control, flip the Mac Logo Control switch at the top of its menu, or hold Option and click Mac Logo Control in the menu bar. The logo fades out, and stays off even after you quit Mac Logo Control or restart your Mac. Without Mac Logo Control, Apple's documented way is a command in Terminal: sudo defaults write com.apple.CoreBrightness LEBacklightMode -int 0 turns the logo off, and sudo defaults delete com.apple.CoreBrightness LEBacklightMode turns it back on. Apple documents only on and off; Mac Logo Control adds brightness and effects." }
           },
           {
             "@type": "Question",
             "name": "Why isn't it on the App Store?",
-            "acceptedAnswer": { "@type": "Answer", "text": "LogoLight works with the part of macOS that drives the logo, through system interfaces that Mac App Store apps aren't allowed to use. Store apps also have to run in a sandbox, which would shut LogoLight out completely. So it's offered here instead, signed with a Developer ID and notarized by Apple." }
+            "acceptedAnswer": { "@type": "Answer", "text": "Mac Logo Control works with the part of macOS that drives the logo, through system interfaces that Mac App Store apps aren't allowed to use. Store apps also have to run in a sandbox, which would shut Mac Logo Control out completely. So it's offered here instead, signed with a Developer ID and notarized by Apple." }
           },
           {
             "@type": "Question",
             "name": "Is it safe?",
-            "acceptedAnswer": { "@type": "Answer", "text": "LogoLight is signed with a Developer ID and notarized by Apple, which means Apple has checked it for malicious software. It usually needs no password. If LogoLight can't switch the logo directly, it asks for one once, in the standard macOS dialog, and installs a small rule (in /etc/sudoers.d) that lets your user account run exactly two commands without a password: Apple's documented commands to turn the logo off and back on. Nothing else. The rule is checked before it's installed, so it can't break sudo, and unchecking Disable Password removes it. And the whole source is on GitHub, so anyone can check what it does." }
+            "acceptedAnswer": { "@type": "Answer", "text": "Mac Logo Control is signed with a Developer ID and notarized by Apple, which means Apple has checked it for malicious software. It usually needs no password. If Mac Logo Control can't switch the logo directly, it asks for one once, in the standard macOS dialog, and installs a small rule (in /etc/sudoers.d) that lets your user account run exactly two commands without a password: Apple's documented commands to turn the logo off and back on. Nothing else. The rule is checked before it's installed, so it can't break sudo, and unchecking Disable Password removes it. And the whole source is on GitHub, so anyone can check what it does." }
           },
           {
             "@type": "Question",
             "name": "Which Macs does it work on?",
-            "acceptedAnswer": { "@type": "Answer", "text": "The MacBook Pro with PROLED XDR Display (the OLED MacBook Pro), the model with the illuminated Apple logo on the back of the lid. On other Macs, LogoLight opens but tells you the logo isn't available." }
+            "acceptedAnswer": { "@type": "Answer", "text": "The MacBook Pro with PROLED XDR Display (the OLED MacBook Pro), the model with the illuminated Apple logo on the back of the lid. On other Macs, Mac Logo Control opens but tells you the logo isn't available." }
           },
           {
             "@type": "Question",
             "name": "How do I uninstall it?",
-            "acceptedAnswer": { "@type": "Answer", "text": "If Disable Password is checked, uncheck it first. That removes the password rule. Turn off Launch at Login if you turned it on. Quit LogoLight and move it from Applications to the Trash. Quitting stops any effect and returns the logo to its normal brightness. If you turned the logo off, it stays off. To turn it back on without LogoLight, run sudo defaults delete com.apple.CoreBrightness LEBacklightMode in Terminal." }
+            "acceptedAnswer": { "@type": "Answer", "text": "If Disable Password is checked, uncheck it first. That removes the password rule. Turn off Launch at Login if you turned it on. Quit Mac Logo Control and move it from Applications to the Trash. Quitting stops any effect and returns the logo to its normal brightness. If you turned the logo off, it stays off. To turn it back on without Mac Logo Control, run sudo defaults delete com.apple.CoreBrightness LEBacklightMode in Terminal." }
           },
           {
             "@type": "Question",
@@ -154,14 +155,14 @@
     <div class="wrap">
       <a class="brand" href="/">
         <img src="images/app-icon-128.png" width="28" height="28" alt="">
-        <span>LogoLight</span>
+        <span>Mac Logo Control</span>
       </a>
       <nav class="site-nav" aria-label="Main">
         <ul>
           <li class="nav-wide"><a href="#effects">Effects</a></li>
           <li class="nav-wide"><a href="#menu">Menu</a></li>
           <li><a href="#faq">FAQ</a></li>
-          <li class="nav-mid"><a href="https://github.com/Ark0N/LogoLight">GitHub</a></li>
+          <li class="nav-mid"><a href="https://github.com/Ark0N/MacLogoControl">GitHub</a></li>
           <li class="nav-coffee"><a href="https://buymeacoffee.com/arkon" rel="noopener">Buy me a coffee</a></li>
           <li><a class="nav-cta" href="#download">Download</a></li>
         </ul>
@@ -175,9 +176,9 @@
         <div class="hero-copy">
           <p class="eyebrow">For MacBook Pro with PROLED XDR Display</p>
           <h1 id="hero-title">Control your glowing Apple&nbsp;logo.</h1>
-          <p class="lead">LogoLight is a free menu bar app for the illuminated Apple logo on the back of your new MacBook&nbsp;Pro with PROLED XDR&nbsp;Display. Turn it off, dim it, let it breathe, pulse or beat like a heart, or glow with your&nbsp;music.</p>
+          <p class="lead">Mac Logo Control is a free menu bar app for the illuminated Apple logo on the back of your new MacBook&nbsp;Pro with PROLED XDR&nbsp;Display. Turn it off, dim it, let it breathe, pulse or beat like a heart, or glow with your&nbsp;music.</p>
           <div class="actions">
-            <a class="btn btn-primary" href="/LogoLight.zip">
+            <a class="btn btn-primary" href="/MacLogoControl.zip">
               <svg aria-hidden="true" focusable="false"><use href="#i-download"/></svg>
               Download free
             </a>
@@ -185,17 +186,17 @@
           </div>
           <ul class="facts" role="list">
             <li><svg aria-hidden="true" focusable="false"><use href="#i-shield"/></svg>Signed with a Developer ID and notarized by Apple</li>
-            <li><svg aria-hidden="true" focusable="false"><use href="#i-code"/></svg><span>Free and open source, <a href="https://github.com/Ark0N/LogoLight">on GitHub</a></span></li>
+            <li><svg aria-hidden="true" focusable="false"><use href="#i-code"/></svg><span>Free and open source, <a href="https://github.com/Ark0N/MacLogoControl">on GitHub</a></span></li>
             <li><svg aria-hidden="true" focusable="false"><use href="#i-cup"/></svg><span>Like it? <a href="https://buymeacoffee.com/arkon" rel="noopener">Buy me a coffee</a></span></li>
           </ul>
         </div>
 
         <figure class="scene">
           <div class="screen-frame">
-            <!-- The menu is a real render of LogoLight's panel (LOGOLIGHT_RENDER_PANEL, see PanelRenderer), with the
+            <!-- The menu is a real render of Mac Logo Control's panel (MACLOGOCONTROL_RENDER_PANEL, see PanelRenderer), with the
                  live view unlit; the menu bar, the menu's frame and its two plain items are drawn here, as the app shows
-                 them. The live view's light (LOGOLIGHT_RENDER_LIGHT) is laid over the lid and faded with Breathe's timing. -->
-            <div class="screen" role="img" aria-label="LogoLight's menu, open below its icon in the menu bar. At the top, the LogoLight switch is on. Below it, the live view of the lid, with the Apple logo glowing and slowly breathing, then the brightness slider near full and the Battery and Charging switches, and of the effects Breathe, Pulse, Heartbeat and Sound, Breathe is on. Below them, Morse code: a message field with play and loop buttons. Then Lit with Lid Closed, on power or with a display, Launch at Login, checked, and Quit LogoLight.">
+                 them. The live view's light (MACLOGOCONTROL_RENDER_LIGHT) is laid over the lid and faded with Breathe's timing. -->
+            <div class="screen" role="img" aria-label="Mac Logo Control's menu, open below its icon in the menu bar. At the top, the Mac Logo Control switch is on. Below it, the live view of the lid, with the Apple logo glowing and slowly breathing, then the brightness slider near full and the Battery and Charging switches, and of the effects Breathe, Pulse, Heartbeat and Sound, Breathe is on. Below them, Morse code: a message field with play and loop buttons. Then Lit with Lid Closed, on power or with a display, Launch at Login, checked, and Quit Mac Logo Control.">
               <div class="menubar">
                 <span class="status status-open">
                   <img class="status-icon" src="images/menubar-icon.png" width="12" height="17" alt="">
@@ -214,7 +215,7 @@
                     <span class="menu-item menu-item-two">Lit with Lid Closed<span class="menu-subtitle">On power or a display</span></span>
                     <span class="menu-item"><svg class="menu-check" aria-hidden="true" focusable="false"><use href="#i-check"/></svg>Launch at Login</span>
                     <span class="menu-sep"></span>
-                    <span class="menu-item">Quit LogoLight</span>
+                    <span class="menu-item">Quit Mac Logo Control</span>
                   </span>
                 </span>
                 <svg class="glyph glyph-battery" aria-hidden="true" focusable="false"><use href="#g-battery"/></svg>
@@ -230,7 +231,7 @@
               <span class="visually-hidden">Pause the animation</span>
             </label>
           </div>
-          <figcaption>LogoLight's menu, with Breathe on. Its live view follows the real&nbsp;logo.</figcaption>
+          <figcaption>Mac Logo Control's menu, with Breathe on. Its live view follows the real&nbsp;logo.</figcaption>
         </figure>
       </div>
     </section>
@@ -245,18 +246,18 @@
           </div>
 
           <div class="play">
-            <!-- LogoLight's live view at 14x (LOGOLIGHT_RENDER_SCALE, _GLOWS=0, _LIGHT): the lid unlit, with the logo's
+            <!-- Mac Logo Control's live view at 14x (MACLOGOCONTROL_RENDER_SCALE, _GLOWS=0, _LIGHT): the lid unlit, with the logo's
                  light over it. The light's group and its glow both fade to the level, as the live view draws it.
                  The controls below pick the effect (timings from LogoEffect.cycle) and the level, without scripts. -->
             <figure class="big-lid">
-              <span class="lid" role="img" aria-label="LogoLight's live view, enlarged: the lid of the MacBook Pro, with the Apple logo glowing at the effect and brightness chosen below.">
+              <span class="lid" role="img" aria-label="Mac Logo Control's live view, enlarged: the lid of the MacBook Pro, with the Apple logo glowing at the effect and brightness chosen below.">
                 <img src="images/lid-black-1624.png" srcset="images/lid-black-696.png 696w, images/lid-black-1160.png 1160w, images/lid-black-1624.png 1624w" sizes="min(100vw - 32px, 760px)" width="1624" height="1148" alt="" loading="lazy" decoding="async">
                 <span class="glow">
                   <img class="halo" src="images/lid-light-1624.png" srcset="images/lid-light-696.png 696w, images/lid-light-1160.png 1160w, images/lid-light-1624.png 1624w" sizes="min(100vw - 32px, 760px)" width="1624" height="1148" alt="" loading="lazy" decoding="async">
                   <img src="images/lid-shape-1624.png" srcset="images/lid-shape-696.png 696w, images/lid-shape-1160.png 1160w, images/lid-shape-1624.png 1624w" sizes="min(100vw - 32px, 760px)" width="1624" height="1148" alt="" loading="lazy" decoding="async">
                 </span>
               </span>
-              <figcaption>LogoLight's live view, enlarged</figcaption>
+              <figcaption>Mac Logo Control's live view, enlarged</figcaption>
             </figure>
 
             <div class="controls">
@@ -334,7 +335,7 @@
         <div class="section-head">
           <p class="eyebrow">The menu</p>
           <h2 id="menu-title">Everything in one small menu.</h2>
-          <p>Click LogoLight in the menu bar and it's all there. Turn the logo off, and the controls below its switch grey out, keeping their settings for when it's back.</p>
+          <p>Click Mac Logo Control in the menu bar and it's all there. Turn the logo off, and the controls below its switch grey out, keeping their settings for when it's back.</p>
         </div>
 
         <div class="menu-pair">
@@ -342,7 +343,7 @@
             <span class="menu menu-alone">
               <picture>
                 <source srcset="images/menu-on-dark-130.png" media="(prefers-color-scheme: dark)">
-                <img src="images/menu-on-light-130.png" width="850" height="2435" alt="LogoLight's menu with the logo on: the LogoLight switch on, the live view of the lid with the Apple logo glowing, the brightness slider at three quarters with the Battery and Charging switches off below it, none of the effects Breathe, Pulse, Heartbeat and Sound switched on, and the Morse code field with its play and loop buttons." loading="lazy" decoding="async">
+                <img src="images/menu-on-light-130.png" width="850" height="2435" alt="Mac Logo Control's menu with the logo on: the Mac Logo Control switch on, the live view of the lid with the Apple logo glowing, the brightness slider at three quarters with the Battery and Charging switches off below it, none of the effects Breathe, Pulse, Heartbeat and Sound switched on, and the Morse code field with its play and loop buttons." loading="lazy" decoding="async">
               </picture>
             </span>
             <figcaption>On, at three quarters</figcaption>
@@ -351,7 +352,7 @@
             <span class="menu menu-alone">
               <picture>
                 <source srcset="images/menu-off-dark-130.png" media="(prefers-color-scheme: dark)">
-                <img src="images/menu-off-light-130.png" width="850" height="2435" alt="LogoLight's menu with the logo off: the LogoLight switch is off, the live view of the lid is dark, and the slider, the Battery and Charging switches, the effect switches and Morse code below it are greyed out, keeping their settings." loading="lazy" decoding="async">
+                <img src="images/menu-off-light-130.png" width="850" height="2435" alt="Mac Logo Control's menu with the logo off: the Mac Logo Control switch is off, the live view of the lid is dark, and the slider, the Battery and Charging switches, the effect switches and Morse code below it are greyed out, keeping their settings." loading="lazy" decoding="async">
               </picture>
             </span>
             <figcaption>Off, the rest greyed out</figcaption>
@@ -362,7 +363,7 @@
           <li class="feature">
             <span class="tile tile-orange"><svg aria-hidden="true" focusable="false"><use href="#i-power"/></svg></span>
             <h3>On and off</h3>
-            <p>Flip the LogoLight switch, and the logo fades out, or back in, smoothly, usually without a password.</p>
+            <p>Flip the Mac Logo Control switch, and the logo fades out, or back in, smoothly, usually without a password.</p>
           </li>
           <li class="feature">
             <span class="tile tile-blue"><svg aria-hidden="true" focusable="false"><use href="#i-sun"/></svg></span>
@@ -392,12 +393,12 @@
           <li class="feature">
             <span class="tile tile-purple"><svg aria-hidden="true" focusable="false"><use href="#i-note"/></svg></span>
             <h3>Sound</h3>
-            <p>Turn on Sound, and the logo glows with whatever your Mac is playing: brighter as it gets louder, dark between beats. macOS asks once to let LogoLight hear it; nothing is recorded.</p>
+            <p>Turn on Sound, and the logo glows with whatever your Mac is playing: brighter as it gets louder, dark between beats. macOS asks once to let Mac Logo Control hear it; nothing is recorded.</p>
           </li>
           <li class="feature">
             <span class="tile tile-teal"><svg aria-hidden="true" focusable="false"><use href="#i-display"/></svg></span>
             <h3>Lid closed</h3>
-            <p>Turn on Lit with Lid Closed, and the logo stays lit behind a closed lid, effects and all, while the keyboard stays dark: on power, where LogoLight keeps your Mac awake, or with an external display.</p>
+            <p>Turn on Lit with Lid Closed, and the logo stays lit behind a closed lid, effects and all, while the keyboard stays dark: on power, where Mac Logo Control keeps your Mac awake, or with an external display.</p>
           </li>
         </ul>
       </div>
@@ -415,32 +416,32 @@
             <div class="cc-copy">
               <span class="tile tile-blue"><svg aria-hidden="true" focusable="false"><use href="#i-toggles"/></svg></span>
               <h3>In Control Center, too</h3>
-              <p>Put the <strong>LogoLight</strong> switch in Control Center, or straight into the menu bar: in Control Center, click Edit Controls, search for LogoLight and drag it&nbsp;in.</p>
-              <p class="fine">Control Center offers apps no sliders, so brightness stays in LogoLight's menu.</p>
+              <p>Put the <strong>Mac Logo Control</strong> switch in Control Center, or straight into the menu bar: in Control Center, click Edit Controls, search for Mac Logo Control and drag it&nbsp;in.</p>
+              <p class="fine">Control Center offers apps no sliders, so brightness stays in Mac Logo Control's menu.</p>
             </div>
             <!-- The real Control Center screenshot (docs/control-center.png, the README's), with the card spanning the
                  row and the picture beside the text. For separate light and dark pictures, save them as
                  images/control-center-light.png and images/control-center-dark.png and add
                  <source srcset="images/control-center-dark.png" media="(prefers-color-scheme: dark)"> in a <picture>. -->
             <figure class="cc-shot">
-              <img src="images/control-center-130.png" width="1440" height="1289" alt="Control Center on a Mac, with LogoLight's button at the top. Beside it, an arrow from the word LogoLight, and LogoLight's live view of the lid with the logo lit and dark, for on and off. Below, the steps to add it: open Control Center, click Edit Controls, search for LogoLight and drag LogoLight in, with an arrow to the Edit Controls button." loading="lazy" decoding="async">
+              <img src="images/control-center-130.png" width="1440" height="1289" alt="Control Center on a Mac, with Mac Logo Control's button at the top. Beside it, an arrow from the word Mac Logo Control, and Mac Logo Control's live view of the lid with the logo lit and dark, for on and off. Below, the steps to add it: open Control Center, click Edit Controls, search for Mac Logo Control and drag Mac Logo Control in, with an arrow to the Edit Controls button." loading="lazy" decoding="async">
             </figure>
           </li>
           <li class="card feature">
             <span class="tile tile-indigo"><svg aria-hidden="true" focusable="false"><use href="#i-option"/></svg></span>
             <h3>Option-click to toggle</h3>
-            <p>Hold <kbd>⌥ Option</kbd> and click LogoLight in the menu bar to switch the logo on or off, without opening the menu.</p>
+            <p>Hold <kbd>⌥ Option</kbd> and click Mac Logo Control in the menu bar to switch the logo on or off, without opening the menu.</p>
           </li>
           <li class="card feature">
             <span class="tile tile-green"><svg aria-hidden="true" focusable="false"><use href="#i-login"/></svg></span>
             <h3>Launch at Login</h3>
-            <p>LogoLight can start when you log in, and it remembers your brightness and effect.</p>
+            <p>Mac Logo Control can start when you log in, and it remembers your brightness and effect.</p>
           </li>
           <li class="card feature">
             <span class="tile tile-teal"><svg aria-hidden="true" focusable="false"><use href="#i-key"/></svg></span>
             <h3>A password once, at most</h3>
-            <p>LogoLight usually switches the logo with no password at all. If it can't switch the logo directly, it asks for your administrator password once: it turns on <strong>Disable Password</strong> at the same time, and doesn't ask again.</p>
-            <p class="fine">In that case, LogoLight can only turn the logo on and off: brightness and effects need direct control.</p>
+            <p>Mac Logo Control usually switches the logo with no password at all. If it can't switch the logo directly, it asks for your administrator password once: it turns on <strong>Disable Password</strong> at the same time, and doesn't ask again.</p>
+            <p class="fine">In that case, Mac Logo Control can only turn the logo on and off: brightness and effects need direct control.</p>
           </li>
         </ul>
       </div>
@@ -450,11 +451,11 @@
       <div class="wrap offer">
         <img class="offer-icon" src="images/app-icon-256.png" width="112" height="112" alt="">
         <h2 id="download-title">Free to download.</h2>
-        <p class="offer-text">Every feature is free. If you enjoy LogoLight, you can say thanks with a&nbsp;coffee.</p>
+        <p class="offer-text">Every feature is free. If you enjoy Mac Logo Control, you can say thanks with a&nbsp;coffee.</p>
         <div class="actions">
-          <a class="btn btn-primary" href="/LogoLight.zip">
+          <a class="btn btn-primary" href="/MacLogoControl.zip">
             <svg aria-hidden="true" focusable="false"><use href="#i-download"/></svg>
-            Download LogoLight
+            Download Mac Logo Control
           </a>
           <!-- The support link, also in the README's Support section. Donations state no amount. -->
           <a class="btn btn-secondary" href="https://buymeacoffee.com/arkon" rel="noopener">
@@ -463,17 +464,18 @@
           </a>
         </div>
         <ol class="steps" role="list" aria-label="Installing">
-          <li>Unzip LogoLight.zip, if your browser hasn't already.</li>
-          <li>Move LogoLight to your Applications folder.</li>
-          <li>Open it. LogoLight lives in the menu bar.</li>
+          <li>Unzip MacLogoControl.zip, if your browser hasn't already.</li>
+          <li>Move Mac Logo Control to your Applications folder.</li>
+          <li>Open it. Mac Logo Control lives in the menu bar.</li>
         </ol>
         <!-- The cask is in github.com/Ark0N/homebrew-tap; also in the README's Install section. -->
         <div class="brew">
           <p>Or install it with <a href="https://brew.sh" rel="noopener">Homebrew</a>:</p>
           <code class="brew-command"><span>brew install --cask</span> <span>ark0n/tap/logolight</span></code>
         </div>
+        <p class="fine">Mac Logo Control was LogoLight. It keeps the settings of an installed LogoLight; after updating, the Control Center switch and Launch at Login need switching on again.</p>
         <p class="fine">Requires a MacBook Pro with PROLED XDR Display. Signed with a Developer ID and notarized by Apple.</p>
-        <p class="fine">Rather build it yourself? The source is <a href="https://github.com/Ark0N/LogoLight">on GitHub</a>, under the MIT license.</p>
+        <p class="fine">Rather build it yourself? The source is <a href="https://github.com/Ark0N/MacLogoControl">on GitHub</a>, under the MIT license.</p>
       </div>
     </section>
 
@@ -487,15 +489,15 @@
           <details>
             <summary><h3>How do I turn off the Apple logo on my MacBook&nbsp;Pro?</h3><svg aria-hidden="true" focusable="false"><use href="#i-chevron"/></svg></summary>
             <div class="answer">
-              <p>With LogoLight, flip the <strong>LogoLight</strong> switch at the top of its menu, or hold <kbd>⌥ Option</kbd> and click LogoLight in the menu bar. The logo fades out, and stays off even after you quit LogoLight or restart your Mac.</p>
-              <p>Without LogoLight, <a href="https://support.apple.com/en-us/149248">Apple's documented way</a> is a command in Terminal: <code>sudo defaults write com.apple.CoreBrightness LEBacklightMode -int 0</code> turns the logo off, and <code>sudo defaults delete com.apple.CoreBrightness LEBacklightMode</code> turns it back on. Apple documents only on and off; LogoLight adds brightness and effects.</p>
+              <p>With Mac Logo Control, flip the <strong>Mac Logo Control</strong> switch at the top of its menu, or hold <kbd>⌥ Option</kbd> and click Mac Logo Control in the menu bar. The logo fades out, and stays off even after you quit Mac Logo Control or restart your Mac.</p>
+              <p>Without Mac Logo Control, <a href="https://support.apple.com/en-us/149248">Apple's documented way</a> is a command in Terminal: <code>sudo defaults write com.apple.CoreBrightness LEBacklightMode -int 0</code> turns the logo off, and <code>sudo defaults delete com.apple.CoreBrightness LEBacklightMode</code> turns it back on. Apple documents only on and off; Mac Logo Control adds brightness and effects.</p>
             </div>
           </details>
 
           <details>
             <summary><h3>Why isn't it on the App Store?</h3><svg aria-hidden="true" focusable="false"><use href="#i-chevron"/></svg></summary>
             <div class="answer">
-              <p>LogoLight works with the part of macOS that drives the logo, through system interfaces that Mac App Store apps aren't allowed to use. Store apps also have to run in a sandbox, which would shut LogoLight out completely.</p>
+              <p>Mac Logo Control works with the part of macOS that drives the logo, through system interfaces that Mac App Store apps aren't allowed to use. Store apps also have to run in a sandbox, which would shut Mac Logo Control out completely.</p>
               <p>So it's offered here instead, signed with a Developer ID and notarized by Apple.</p>
             </div>
           </details>
@@ -503,16 +505,16 @@
           <details>
             <summary><h3>Is it safe?</h3><svg aria-hidden="true" focusable="false"><use href="#i-chevron"/></svg></summary>
             <div class="answer">
-              <p>LogoLight is signed with a Developer ID and notarized by Apple, which means Apple has checked it for malicious software.</p>
-              <p>It usually needs no password. If LogoLight can't switch the logo directly, it asks for one once, in the standard macOS dialog, and installs a small rule (in <code>/etc/sudoers.d</code>) that lets your user account run exactly two commands without a password: Apple's documented commands to turn the logo off and back on. Nothing else. The rule is checked before it's installed, so it can't break <code>sudo</code>, and unchecking <strong>Disable Password</strong> removes it.</p>
-              <p>And the whole source is <a href="https://github.com/Ark0N/LogoLight">on GitHub</a>, so anyone can check what it does.</p>
+              <p>Mac Logo Control is signed with a Developer ID and notarized by Apple, which means Apple has checked it for malicious software.</p>
+              <p>It usually needs no password. If Mac Logo Control can't switch the logo directly, it asks for one once, in the standard macOS dialog, and installs a small rule (in <code>/etc/sudoers.d</code>) that lets your user account run exactly two commands without a password: Apple's documented commands to turn the logo off and back on. Nothing else. The rule is checked before it's installed, so it can't break <code>sudo</code>, and unchecking <strong>Disable Password</strong> removes it.</p>
+              <p>And the whole source is <a href="https://github.com/Ark0N/MacLogoControl">on GitHub</a>, so anyone can check what it does.</p>
             </div>
           </details>
 
           <details>
             <summary><h3>Which Macs does it work on?</h3><svg aria-hidden="true" focusable="false"><use href="#i-chevron"/></svg></summary>
             <div class="answer">
-              <p>The MacBook Pro with PROLED XDR Display (the OLED MacBook&nbsp;Pro), the model with the illuminated Apple logo on the back of the lid. On other Macs, LogoLight opens but tells you the logo isn't available.</p>
+              <p>The MacBook Pro with PROLED XDR Display (the OLED MacBook&nbsp;Pro), the model with the illuminated Apple logo on the back of the lid. On other Macs, Mac Logo Control opens but tells you the logo isn't available.</p>
             </div>
           </details>
 
@@ -522,9 +524,9 @@
               <ol>
                 <li>If <strong>Disable Password</strong> is checked, uncheck it first. That removes the password rule.</li>
                 <li>Turn off <strong>Launch at Login</strong> if you turned it on.</li>
-                <li>Quit LogoLight and move it from Applications to the Trash.</li>
+                <li>Quit Mac Logo Control and move it from Applications to the Trash.</li>
               </ol>
-              <p>Quitting stops any effect and returns the logo to its normal brightness. If you turned the logo off, it stays off. To turn it back on without LogoLight, run <code>sudo defaults delete com.apple.CoreBrightness LEBacklightMode</code> in Terminal.</p>
+              <p>Quitting stops any effect and returns the logo to its normal brightness. If you turned the logo off, it stays off. To turn it back on without Mac Logo Control, run <code>sudo defaults delete com.apple.CoreBrightness LEBacklightMode</code> in Terminal.</p>
             </div>
           </details>
 
@@ -532,7 +534,7 @@
             <summary><h3>Is it really free?</h3><svg aria-hidden="true" focusable="false"><use href="#i-chevron"/></svg></summary>
             <div class="answer">
               <p>Yes. Download it and use every feature for free. If you enjoy it, you can <a href="https://buymeacoffee.com/arkon" rel="noopener">buy me a coffee</a>, but it doesn't unlock anything; it just says thanks.</p>
-              <p>It's open source, too: the code is <a href="https://github.com/Ark0N/LogoLight">on GitHub</a> under the MIT license, so you can read it, change it or build it yourself.</p>
+              <p>It's open source, too: the code is <a href="https://github.com/Ark0N/MacLogoControl">on GitHub</a> under the MIT license, so you can read it, change it or build it yourself.</p>
             </div>
           </details>
         </div>
@@ -544,10 +546,10 @@
     <div class="wrap">
       <p class="brand">
         <img src="images/app-icon-128.png" width="24" height="24" alt="">
-        <span>LogoLight</span>
+        <span>Mac Logo Control</span>
       </p>
-      <p>A menu bar app for the MacBook Pro with PROLED XDR Display. Open source, <a href="https://github.com/Ark0N/LogoLight">on GitHub</a>. Like it? <a href="https://buymeacoffee.com/arkon" rel="noopener">Buy me a coffee</a>. This site sets no cookies and has no analytics.</p>
-      <p>LogoLight is not affiliated with or endorsed by Apple Inc. Apple, the Apple logo and MacBook Pro are trademarks of Apple Inc., registered in the U.S. and other countries.</p>
+      <p>A menu bar app for the MacBook Pro with PROLED XDR Display. Open source, <a href="https://github.com/Ark0N/MacLogoControl">on GitHub</a>. Like it? <a href="https://buymeacoffee.com/arkon" rel="noopener">Buy me a coffee</a>. This site sets no cookies and has no analytics.</p>
+      <p>Mac Logo Control is not affiliated with or endorsed by Apple Inc. Apple, the Apple logo and MacBook Pro are trademarks of Apple Inc., registered in the U.S. and other countries.</p>
     </div>
   </footer>
 </body>

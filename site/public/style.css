@@ -1,4 +1,4 @@
-/* LogoLight site. No external requests: system fonts only, and every image is local. */
+/* Mac Logo Control site. No external requests: system fonts only, and every image is local. */
 
 :root {
   color-scheme: light dark;
@@ -673,7 +673,7 @@ strong {
 }
 
 /* The lid inside the panel: 116 × 82 points at (27, 50), in a panel 170 points wide and --panel-height tall.
-   The renderer prints these (LOGOLIGHT_RENDER_GLOWS). The lid's place from the top is in points, so it's the
+   The renderer prints these (MACLOGOCONTROL_RENDER_GLOWS). The lid's place from the top is in points, so it's the
    panel's height that turns it into a percentage: with the height of an older, shorter panel here, the light
    sat below the logo it belongs to. */
 .menu-panel .glow {
@@ -785,7 +785,7 @@ strong {
   outline-offset: 3px;
 }
 
-/* The live view: the lid unlit, with the logo's light over it (LOGOLIGHT_RENDER_LIGHT). As in the app, the light's
+/* The live view: the lid unlit, with the logo's light over it (MACLOGOCONTROL_RENDER_LIGHT). As in the app, the light's
    group is at the glow's opacity and its halo is too, inside it, so the halo shows at the glow squared. */
 
 .lid {

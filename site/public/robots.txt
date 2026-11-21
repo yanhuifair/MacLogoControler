@@ -1,4 +1,4 @@
-# LogoLight's website. Every crawler is welcome: search engines, and AI assistants that answer questions
+# Mac Logo Control's website. Every crawler is welcome: search engines, and AI assistants that answer questions
 # about the MacBook Pro's Apple logo, for search, for answers and for training alike.
 # (Cloudflare may add its content-signals preamble above this file.)
 

@@ -29,5 +29,9 @@
   Cache-Control: public, max-age=86400
 
 # The notarized build (make dist). Always download it rather than open it in the browser.
+/MacLogoControl.zip
+  Content-Disposition: attachment; filename="MacLogoControl.zip"
+
+# The old path, kept so a file already cached and any older link still downloads with a sane name.
 /LogoLight.zip
   Content-Disposition: attachment; filename="LogoLight.zip"
