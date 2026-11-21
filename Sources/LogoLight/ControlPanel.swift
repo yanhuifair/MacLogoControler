@@ -466,13 +466,13 @@ private struct PanelContent: View {
 
     /// The effects, as tabs across one row: at most one plays at a time, and None stops them.
     private var effectsCard: some View {
-        PanelCard {
-            EffectTabs(effects: effects, selection: model.effect, choose: { model.choose($0) })
-                .allowsHitTesting(state.canAdjust)
-                .opacity(state.canAdjust ? 1 : 0.7)
-                .padding(.horizontal, PanelMetrics.iconInset)
-                .frame(height: PanelMetrics.rowHeight)
-        }
+        // No card around the tabs: they're one row, and a card behind them was just another layer under
+        // the lozenge. The card's inset keeps them in line with the rows above and below.
+        EffectTabs(effects: effects, selection: model.effect, choose: { model.choose($0) })
+            .allowsHitTesting(state.canAdjust)
+            .opacity(state.canAdjust ? 1 : 0.7)
+            .padding(.horizontal, PanelMetrics.inset + PanelMetrics.iconInset)
+            .frame(height: PanelMetrics.rowHeight)
     }
 
     private var effects: [LogoEffect] {
@@ -613,16 +613,8 @@ private struct EffectTabs: View {
                       + "gets louder, peaking at your brightness. macOS asks once to let LogoLight hear it." : nil)
             }
         }
-        .padding(3)
-        // One see-through capsule that the tabs sit in, no more: a fill and a hairline.
-        .background {
-            Capsule(style: .continuous)
-                .fill(isDark ? Color.white.opacity(0.07) : Color.black.opacity(0.05))
-                .overlay {
-                    Capsule(style: .continuous)
-                        .strokeBorder(isDark ? Color.white.opacity(0.10) : Color.black.opacity(0.05), lineWidth: 1)
-                }
-        }
+        // No bar behind them: the card is the only background, and the lozenge the only other thing.
+        .padding(.vertical, 2)
         // The lozenge slides, as a glass bar's does: quick, with a little bounce, stretching on the way
         // when the tabs it crosses are of different widths.
         .animation(.spring(response: 0.34, dampingFraction: 0.72), value: selection)
