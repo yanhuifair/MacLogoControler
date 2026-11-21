@@ -588,15 +588,21 @@ private struct EffectTabs: View {
                             .font(.system(size: 13))
                             .lineLimit(1)
                     }
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(isSelected ? AnyShapeStyle(.primary) : AnyShapeStyle(.secondary))
                     .padding(.horizontal, 10)
                     // Each tab as wide as its icon and title need, as AppKit sizes a segment's.
                     .frame(minWidth: 40, minHeight: 22)
                     .background {
                         if isSelected {
-                            RoundedRectangle(cornerRadius: 5, style: .continuous)
-                                .fill(isDark ? AnyShapeStyle(.white.opacity(0.22)) : AnyShapeStyle(.white))
-                                .shadow(color: .black.opacity(isDark ? 0 : 0.14), radius: 1, y: 0.5)
+                            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                .fill(isDark ? AnyShapeStyle(.white.opacity(0.18)) : AnyShapeStyle(.white))
+                                .overlay {
+                                    if !isDark {
+                                        RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                            .strokeBorder(.black.opacity(0.10), lineWidth: 0.5)
+                                    }
+                                }
+                                .shadow(color: .black.opacity(isDark ? 0.18 : 0.10), radius: 1.5, y: 0.5)
                         }
                     }
                     .contentShape(Rectangle())
@@ -608,11 +614,8 @@ private struct EffectTabs: View {
                       + "gets louder, peaking at your brightness. macOS asks once to let LogoLight hear it." : nil)
             }
         }
-        .padding(2)
-        .background {
-            RoundedRectangle(cornerRadius: 7, style: .continuous)
-                .fill(isDark ? Color.white.opacity(0.10) : Color.black.opacity(0.07))
-        }
+        // No track behind the tabs: the card is the backing, and the one that plays is the raised pill.
+        .padding(.vertical, 2)
     }
 
     private var isDark: Bool { colorScheme == .dark }
