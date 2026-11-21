@@ -415,20 +415,11 @@ private struct PanelContent: View {
     /// The effects, as tabs across one row: at most one plays at a time, and None stops them.
     private var effectsCard: some View {
         PanelCard {
-            Picker("Effect", selection: Binding(get: { model.effect }, set: { model.choose($0) })) {
-                ForEach(effects, id: \.self) { effect in
-                    Text(effect.title).tag(effect)
-                }
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .accessibilityLabel("Effect")
-            // Not `.disabled`: SwiftUI fades the tabs until they're hard to read on a light card.
-            .allowsHitTesting(state.canAdjust)
-            .opacity(state.canAdjust ? 1 : 0.7)
-            .padding(.horizontal, PanelMetrics.iconInset)
-            .frame(height: PanelMetrics.rowHeight)
-            .help("Breathe, Pulse, Heartbeat or Sound. macOS asks once to let LogoLight hear it, for Sound.")
+            EffectTabs(effects: effects, selection: model.effect, choose: { model.choose($0) })
+                .allowsHitTesting(state.canAdjust)
+                .opacity(state.canAdjust ? 1 : 0.7)
+                .padding(.horizontal, PanelMetrics.iconInset)
+                .frame(height: PanelMetrics.rowHeight)
         }
     }
 
@@ -519,6 +510,70 @@ private struct PanelRow<Control: View>: View {
         .frame(height: PanelMetrics.rowHeight)
         .animation(.easeInOut(duration: PanelMetrics.greying), value: isGreyed)
         .tip(help)
+    }
+}
+
+/// A row of tabs, one per effect: the one playing is on a raised pill. Drawn here rather than with a
+/// segmented `Picker`, which shows a segment's title or its icon but not both.
+private struct EffectTabs: View {
+    let effects: [LogoEffect]
+    let selection: LogoEffect
+    let choose: (LogoEffect) -> Void
+
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        HStack(spacing: 0) {
+            ForEach(effects, id: \.self) { effect in
+                let isSelected = effect == selection
+                Button {
+                    choose(effect)
+                } label: {
+                    HStack(spacing: 5) {
+                        Image(systemName: Self.symbol(effect))
+                            .font(.system(size: 11, weight: .medium))
+                        Text(effect.title)
+                            .font(.system(size: 13))
+                            .lineLimit(1)
+                    }
+                    .foregroundStyle(.primary)
+                    .padding(.horizontal, 10)
+                    // Each tab as wide as its icon and title need, as AppKit sizes a segment's.
+                    .frame(minWidth: 40, minHeight: 22)
+                    .background {
+                        if isSelected {
+                            RoundedRectangle(cornerRadius: 5, style: .continuous)
+                                .fill(isDark ? AnyShapeStyle(.white.opacity(0.22)) : AnyShapeStyle(.white))
+                                .shadow(color: .black.opacity(isDark ? 0 : 0.14), radius: 1, y: 0.5)
+                        }
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(effect.title)
+                .accessibilityAddTraits(isSelected ? [.isSelected] : [])
+                .tip(effect == .sound ? "The logo glows with the sound your Mac is playing: brighter as it "
+                      + "gets louder, peaking at your brightness. macOS asks once to let LogoLight hear it." : nil)
+            }
+        }
+        .padding(2)
+        .background {
+            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                .fill(isDark ? Color.white.opacity(0.10) : Color.black.opacity(0.07))
+        }
+    }
+
+    private var isDark: Bool { colorScheme == .dark }
+
+    /// Each effect's symbol: what the tabs had as rows before they were tabs.
+    private static func symbol(_ effect: LogoEffect) -> String {
+        switch effect {
+        case .none: "slash.circle"
+        case .breathe: "wind"
+        case .pulse: "waveform"
+        case .heartbeat: "heart.fill"
+        case .sound: "music.note"
+        }
     }
 }
 

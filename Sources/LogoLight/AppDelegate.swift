@@ -39,8 +39,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// Runs `action` once the app is active, which is what its AppKit controls need to draw in the
-    /// accent colour, or after a second without it: the pictures then show them grey.
-    private func waitUntilActive(deadline: Date = Date().addingTimeInterval(1), then action: @escaping @MainActor () -> Void) {
+    /// accent colour, or after a few seconds without it: the pictures then show them grey.
+    private func waitUntilActive(deadline: Date = Date().addingTimeInterval(3), then action: @escaping @MainActor () -> Void) {
         guard !NSApp.isActive, Date() < deadline else { return action() }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
             MainActor.assumeIsolated { self.waitUntilActive(deadline: deadline, then: action) }
