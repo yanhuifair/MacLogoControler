@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Ark0N/MacLogoControl/releases/latest/download/MacLogoControl-1.5.0.zip"><img src="docs/download-button.png" height="56" alt="Download Mac Logo Control"></a>
+  <a href="https://github.com/yanhuifair/MacLogoControler/releases/latest/download/MacLogoControl-1.5.0.zip"><img src="docs/download-button.png" height="56" alt="Download Mac Logo Control"></a>
   &nbsp;
   <a href="https://buymeacoffee.com/arkon"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" height="56" alt="Buy me a coffee"></a>
 </p>
@@ -15,7 +15,7 @@
 <p align="center">
   <a href="https://logolight.app"><img src="https://img.shields.io/badge/website-logolight.app-1f1f24?style=flat-square" alt="Website: logolight.app"></a>
   <img src="https://img.shields.io/badge/notarized-Developer%20ID-1f1f24?style=flat-square" alt="Notarized by Apple">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-1f1f24?style=flat-square" alt="MIT license"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0-1f1f24?style=flat-square" alt="GPL-3.0 license"></a>
 </p>
 
 The app was called LogoLight until 1.5.0: it installs over an old LogoLight and keeps your settings,
@@ -92,7 +92,7 @@ Launch at Login back on.
 
 ## Install
 
-1. **[Download Mac Logo Control](https://github.com/Ark0N/MacLogoControl/releases/latest/download/MacLogoControl-1.5.0.zip)**.
+1. **[Download Mac Logo Control](https://github.com/yanhuifair/MacLogoControler/releases/latest/download/MacLogoControl-1.5.0.zip)**.
    It's signed with a Developer ID and notarized by Apple.
 2. Unzip it, move **Mac Logo Control** to your Applications folder and open it. It lives in the menu bar.
 
@@ -333,6 +333,7 @@ And you can buy me a coffee:
 
 ## License
 
-MIT, see [LICENSE](LICENSE).
+GPL-3.0, see [LICENSE](LICENSE). Versions up to 1.4.0 were MIT; that grant stands for those
+releases, and it's what let the code be combined with MIT parts since.
 
 <sub>Mac Logo Control is not affiliated with or endorsed by Apple Inc. Apple, the Apple logo and MacBook Pro are trademarks of Apple Inc., registered in the U.S. and other countries.</sub>

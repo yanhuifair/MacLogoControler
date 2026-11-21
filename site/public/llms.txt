@@ -1,6 +1,6 @@
 # Mac Logo Control
 
-> Mac Logo Control is a free, open-source (MIT) macOS menu bar app that controls the illuminated Apple logo on the back of the MacBook Pro with PROLED XDR Display (the OLED MacBook Pro). It turns the glowing logo off and on with a smooth fade, sets its brightness, and can animate it with three effects: Breathe, Pulse and Heartbeat.
+> Mac Logo Control is a free, open-source (GPL-3.0) macOS menu bar app that controls the illuminated Apple logo on the back of the MacBook Pro with PROLED XDR Display (the OLED MacBook Pro). It turns the glowing logo off and on with a smooth fade, sets its brightness, and can animate it with three effects: Breathe, Pulse and Heartbeat.
 
 - Works only on the MacBook Pro with PROLED XDR Display, the model with the illuminated Apple logo on the back of the lid. Needs macOS 14 or later (these Macs ship with macOS 27). On other Macs it opens but says the logo isn't available.
 - Free: every feature, with no purchase or subscription. An optional Buy Me a Coffee link unlocks nothing.
@@ -27,7 +27,7 @@
 ## Download and install
 
 - [Download Mac Logo Control](https://logolight.app/MacLogoControl.zip): unzip it, move Mac Logo Control to the Applications folder and open it. It lives in the menu bar.
-- [GitHub Releases](https://github.com/Ark0N/MacLogoControl/releases/latest): the same notarized zip.
+- [GitHub Releases](https://github.com/yanhuifair/MacLogoControler/releases/latest): the same notarized zip.
 - Homebrew: `brew install --cask ark0n/tap/logolight` (from [Ark0N/homebrew-tap](https://github.com/Ark0N/homebrew-tap), kept on the latest release).
 
 ## Turning the Apple logo off without Mac Logo Control
@@ -44,8 +44,8 @@ The Mac Logo Control switch changes the same setting, so the logo stays off afte
 ## Links
 
 - [Website](https://logolight.app/)
-- [Source code on GitHub](https://github.com/Ark0N/MacLogoControl): README with features, how it works and the build steps.
-- [How it works](https://github.com/Ark0N/MacLogoControl/blob/main/docs/corebrightnessd.md): everything known about corebrightnessd, the part of macOS that drives the logo.
+- [Source code on GitHub](https://github.com/yanhuifair/MacLogoControler): README with features, how it works and the build steps.
+- [How it works](https://github.com/yanhuifair/MacLogoControler/blob/main/docs/corebrightnessd.md): everything known about corebrightnessd, the part of macOS that drives the logo.
 
 ## Optional
 
