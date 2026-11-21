@@ -573,6 +573,9 @@ private struct EffectTabs: View {
     let choose: (LogoEffect) -> Void
 
     @Environment(\.colorScheme) private var colorScheme
+    /// One pill, shared by whichever tab is picked: it slides from the old to the new rather than each
+    /// tab lighting up on its own, which is how macOS 26's glass tabs move the selection.
+    @Namespace private var pill
 
     var body: some View {
         HStack(spacing: 0) {
@@ -603,6 +606,7 @@ private struct EffectTabs: View {
                                     }
                                 }
                                 .shadow(color: .black.opacity(isDark ? 0.18 : 0.10), radius: 1.5, y: 0.5)
+                                .matchedGeometryEffect(id: "selection", in: pill)
                         }
                     }
                     .contentShape(Rectangle())
@@ -616,6 +620,9 @@ private struct EffectTabs: View {
         }
         // No track behind the tabs: the card is the backing, and the one that plays is the raised pill.
         .padding(.vertical, 2)
+        // A glass tab's pill slides: a spring that settles quickly, with a little overshoot, and it
+        // stretches on the way when the tabs are of different widths.
+        .animation(.spring(response: 0.32, dampingFraction: 0.74), value: selection)
     }
 
     private var isDark: Bool { colorScheme == .dark }
