@@ -474,7 +474,7 @@ private struct PanelContent: View {
         EffectTabs(effects: effects, selection: model.effect, choose: { model.choose($0) })
             .allowsHitTesting(state.canAdjust)
             .opacity(state.canAdjust ? 1 : 0.7)
-            .padding(.horizontal, PanelMetrics.inset + PanelMetrics.iconInset)
+            // The panel already insets it as it does the cards: no padding of its own.
             .frame(height: PanelMetrics.rowHeight)
     }
 
@@ -597,7 +597,7 @@ private struct EffectTabs: View {
                     }
                     .foregroundStyle(isSelected ? AnyShapeStyle(.primary) : AnyShapeStyle(.secondary))
                     .padding(.horizontal, 10)
-                    // Each tab as wide as its icon and title need, as AppKit sizes a segment's.
+                    // Each tab as wide as its icon and title need; the spacers share out the rest.
                     .frame(minWidth: 40, minHeight: 24)
                     .background {
                         // The one that plays: one lozenge, sliding between the tabs.
@@ -615,8 +615,11 @@ private struct EffectTabs: View {
                 .accessibilityAddTraits(isSelected ? [.isSelected] : [])
                 .tip(effect == .sound ? "The logo glows with the sound your Mac is playing: brighter as it "
                       + "gets louder, peaking at your brightness. macOS asks once to let LogoLight hear it." : nil)
+                if effect != effects.last { Spacer(minLength: 0) }
             }
         }
+        // As wide as the cards, so its edges line up with theirs, with the tabs spread across it.
+        .frame(maxWidth: .infinity)
         .padding(PanelMetrics.tabInset)
         // One background, and one only: the bar the tabs sit in, in the cards' material and corners.
         .background(GlassMaterial(shape: RoundedRectangle(cornerRadius: PanelMetrics.cardRadius,
