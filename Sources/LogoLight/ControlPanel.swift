@@ -770,7 +770,9 @@ private final class LogoPreview: NSView {
             lid.colors = [top.cgColor, bottom.cgColor]
             lid.borderColor = edge.cgColor
             Self.paintMark(mark, finish: finish)
-            mark.opacity = markOpacity
+            markBaseOpacity = markOpacity
+            // A logo that's already lit keeps it that way: the metal shows only as far as it's dark.
+            mark.opacity = markOpacity * Float(1 - (shownGlow ?? 0))
         }
     }
 
@@ -808,8 +810,9 @@ private final class LogoPreview: NSView {
 
     override var isFlipped: Bool { true }
 
-    /// The glow last drawn.
+    /// The glow last drawn, and how solid the unlit mark is before the light fades it out.
     private var shownGlow: Double?
+    private var markBaseOpacity: Float = 0.9
 
     /// Called on every frame while the menu is open. A change too small to see isn't drawn, so a
     /// steady logo costs nothing.
@@ -819,6 +822,9 @@ private final class LogoPreview: NSView {
         withoutAnimation {
             logo.opacity = Float(glow)
             logo.shadowOpacity = Float(glow)
+            // Lit, what's seen is the light, not the polished metal behind it: the mark fades out with it,
+            // so a logo at half brightness still reads as lit rather than as dark metal with a sheen.
+            mark.opacity = markBaseOpacity * Float(1 - glow)
         }
     }
 
