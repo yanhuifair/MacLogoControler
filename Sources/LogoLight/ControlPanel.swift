@@ -77,6 +77,14 @@ final class ControlPanel: NSView {
     /// Top-down, as the menu's own items beside it are drawn, and as the picture of it is.
     override var isFlipped: Bool { true }
 
+    /// Draws the panel in `appearance`: a menu item's view isn't always handed the menu window's, and
+    /// SwiftUI then draws the panel in whichever appearance it fell back to rather than the system's.
+    func adopt(_ appearance: NSAppearance?) {
+        guard let appearance, appearance != self.appearance else { return }
+        self.appearance = appearance
+        host.appearance = appearance
+    }
+
     /// Shows how brightly the logo is glowing right now, from 0 to 1.
     func showGlow(_ glow: Double) {
         preview.show(glow: glow)
@@ -357,7 +365,8 @@ private struct PanelContent: View {
                         OptionTabs(options: [
                             OptionTabs<MacFinish>.Option(value: .silver, title: "Silver"),
                             OptionTabs<MacFinish>.Option(value: .spaceBlack, title: "Space Black"),
-                        ], selection: model.finish, choose: { model.setFinish($0) }, spreads: false)
+                        ], selection: model.finish, choose: { model.setFinish($0) }, spreads: false,
+                           surface: .card)
                     }
                     .padding(.vertical, 9)
                 }
@@ -646,11 +655,16 @@ private struct OptionTabs<Value: Hashable>: View {
         var help: String?
     }
 
+    /// What the bar is drawn on: the panel itself, or a card, which is white in the light and lighter than
+    /// the panel in the dark — the bar takes the opposite direction on each, so it shows on both.
+    enum Surface { case panel, card }
+
     let options: [Option]
     let selection: Value
     let choose: (Value) -> Void
     /// Whether the bar fills the width it's given, the tabs spread across it, or hugs its tabs.
     var spreads = true
+    var surface = Surface.panel
 
     @Environment(\.colorScheme) private var colorScheme
     /// One lozenge, shared by whichever tab is picked, so it slides rather than each lighting up on its own.
@@ -696,15 +710,34 @@ private struct OptionTabs<Value: Hashable>: View {
         // As wide as the cards, so its edges line up with theirs, with the tabs spread across it.
         .frame(maxWidth: spreads ? .infinity : nil)
         .padding(PanelMetrics.tabInset)
-        // One background, and one only: the bar the tabs sit in, in the cards' material and corners.
-        .background(GlassMaterial(shape: RoundedRectangle(cornerRadius: PanelMetrics.cardRadius,
-                                                          style: .continuous)))
+        // One background, and one only: the bar the tabs sit in, with the cards' corners. It takes the
+        // opposite tone to what it sits on — white on the panel in the light, a shade of black on a card
+        // that's white — so it shows in both appearances without a second surface.
+        .background {
+            let shape = RoundedRectangle(cornerRadius: PanelMetrics.cardRadius, style: .continuous)
+            shape
+                .fill(barFill)
+                .overlay { shape.strokeBorder(barRim, lineWidth: 1) }
+        }
         // The lozenge slides, as a glass bar's does: quick, with a little bounce, stretching on the way
         // when the tabs it crosses are of different widths.
         .animation(.spring(response: 0.34, dampingFraction: 0.72), value: selection)
     }
 
     private var isDark: Bool { colorScheme == .dark }
+
+    private var barFill: Color {
+        switch (isDark, surface) {
+        case (true, .panel): Color.white.opacity(0.07)
+        case (true, .card): Color.white.opacity(0.10)
+        case (false, .panel): Color.white.opacity(0.92)
+        case (false, .card): Color.black.opacity(0.055)
+        }
+    }
+
+    private var barRim: Color {
+        isDark ? Color.white.opacity(0.10) : Color.black.opacity(0.05)
+    }
 }
 
 /// A row's icon: the system's symbol for it, in the label's own secondary colour.

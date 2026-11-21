@@ -215,6 +215,8 @@ final class StatusItemController: NSObject, NSMenuDelegate {
 
     func menuWillOpen(_ menu: NSMenu) {
         isMenuOpen = true
+        // The system's appearance, taken as the menu opens: dark or light, the panel follows it.
+        panel.adopt(NSApp.effectiveAppearance)
         readMenuSettings()
         refresh()
         scheduleRefresh(every: 1)
