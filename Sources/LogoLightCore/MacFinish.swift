@@ -14,13 +14,18 @@ public enum MacFinish: Sendable, Equatable {
     /// `com.apple.macbookpro-dynamic-island-2026-14-space-black`: the same mapping that picks this
     /// Mac's picture in System Settings. All of it is public API and needs no privileges.
     public static func current() -> MacFinish? {
+        deviceType().flatMap { MacFinish(deviceTypeIdentifier: $0.identifier) }
+    }
+
+    /// The device model type System Settings picks this Mac's picture with, as for `current()`.
+    /// Shared with `MacLid`, which reads the screen size out of the same identifier.
+    static func deviceType() -> UTType? {
         guard let model = modelIdentifier(), let data = housingColor(),
-              let code = enclosureColorCode(fromHousingColor: data),
-              let type = UTType(tag: "\(model)@ECOLOR=\(code)",
-                                tagClass: UTTagClass(rawValue: "com.apple.device-model-code"),
-                                conformingTo: nil)
+              let code = enclosureColorCode(fromHousingColor: data)
         else { return nil }
-        return MacFinish(deviceTypeIdentifier: type.identifier)
+        return UTType(tag: "\(model)@ECOLOR=\(code)",
+                      tagClass: UTTagClass(rawValue: "com.apple.device-model-code"),
+                      conformingTo: nil)
     }
 
     /// The finish named at the end of a device type identifier, e.g. `…-space-black` or `…-silver`.

@@ -12,7 +12,8 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     private let menu = NSMenu()
 
-    private let panel = ControlPanel(finish: StatusItemController.previewFinish)
+    private let panel = ControlPanel(finish: StatusItemController.previewFinish,
+                                     lid: StatusItemController.previewLid)
     private let panelItem = NSMenuItem()
     private let passwordlessItem = NSMenuItem()
     private var lidObserver: LidObserver?
@@ -72,12 +73,22 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     private static let morseTextDefaultsKey = "MorseText"
     private static let previewFinishDefaultsKey = "PreviewFinish"
 
+    private static let previewLidDefaultsKey = "PreviewLid"
+
     /// The finish the live view shows: the one picked in the panel, or else this Mac's own.
     private static var previewFinish: MacFinish {
         switch UserDefaults.standard.string(forKey: previewFinishDefaultsKey) {
         case "silver": .silver
         case "spaceBlack": .spaceBlack
         default: MacFinish.current() ?? .spaceBlack
+        }
+    }
+    /// The lid size the live view shows: the one picked in the panel, or else this Mac's own.
+    private static var previewLid: MacLid {
+        switch UserDefaults.standard.string(forKey: previewLidDefaultsKey) {
+        case "14": .fourteen
+        case "16": .sixteen
+        default: MacLid.current() ?? .sixteen
         }
     }
     /// The Morse loop switch: on, a message repeats until it's stopped.
@@ -173,6 +184,9 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         panel.onMorseTextChanged = { UserDefaults.standard.set($0, forKey: Self.morseTextDefaultsKey) }
         panel.onPreviewFinishChanged = { finish in
             UserDefaults.standard.set(finish == .silver ? "silver" : "spaceBlack", forKey: Self.previewFinishDefaultsKey)
+        }
+        panel.onPreviewLidChanged = { lid in
+            UserDefaults.standard.set(lid == .fourteen ? "14" : "16", forKey: Self.previewLidDefaultsKey)
         }
         panel.setMorseText(UserDefaults.standard.string(forKey: Self.morseTextDefaultsKey) ?? "SOS")
         // So the play button turns back from stop as soon as a message sent once is done.

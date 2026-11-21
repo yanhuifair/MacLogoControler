@@ -290,9 +290,10 @@ disable it"), then the live view, then the brightness slider (its own card, with
 the logo follows the display's brightness, read through DisplayServices, which macOS keeps in step with
 the light around you), then the effects.
 The live view is drawn as the lid of this MacBook Pro in its real proportions and
-its own finish, space black or silver (`MacFinish`, read from the device tree's `housing-color` and
-Launch Services' device types), which the panel's segmented picker can switch to the other one
-(`PreviewFinish` in the defaults, read once at launch). They also asked for a live view "so fully synced up": `LogoPreview` shows
+its own finish and size, space black or silver and 14 or 16 inch (`MacFinish` and `MacLid`, both
+read from the device tree's `housing-color` and Launch Services' device types — the identifier
+carries both, e.g. "…-2026-16-space-black"), which the panel's two pickers (side by side under the
+preview) can switch (`PreviewFinish` and `PreviewLid` in the defaults, read once at launch). They also asked for a live view "so fully synced up": `LogoPreview` shows
 `LogoController.liveGlow`, read from the hardware on each frame (a display link, at 60 Hz) while
 the menu is open. With the menu closed, only a 10 s refresh runs, which keeps the menu bar icon in
 step with changes made elsewhere (every second while the menu is open).

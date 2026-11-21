@@ -30,6 +30,8 @@ final class ControlPanel: NSView {
     var onMorseTextChanged: ((String) -> Void)?
     /// The finish picked for the live view (to remember it for next time).
     var onPreviewFinishChanged: ((MacFinish) -> Void)?
+    /// The lid size picked for the live view (to remember it for next time).
+    var onPreviewLidChanged: ((MacLid) -> Void)?
 
     /// The panel is as wide and as tall as its content wants (the effect tabs across one row are what make
     /// it wide); this is the least it takes, so a panel without them still fits the menu's own items.
@@ -39,10 +41,10 @@ final class ControlPanel: NSView {
     private let preview: LogoPreview
     private let host: NSHostingView<PanelContent>
 
-    /// `finish` is the colour of this Mac's case, which the live view copies.
-    init(finish: MacFinish = .spaceBlack) {
-        let preview = LogoPreview(finish: finish)
-        let model = PanelModel(finish: finish)
+    /// `finish` is the colour of this Mac's case and `lid` its screen size, which the live view copies.
+    init(finish: MacFinish = .spaceBlack, lid: MacLid = .sixteen) {
+        let preview = LogoPreview(finish: finish, lid: lid)
+        let model = PanelModel(finish: finish, lid: lid)
         self.preview = preview
         self.model = model
         host = NSHostingView(rootView: PanelContent(model: model, preview: preview))
@@ -69,6 +71,11 @@ final class ControlPanel: NSView {
         model.onMorseLoopsChanged = { [weak self] in self?.onMorseLoopsChanged?($0) }
         model.onMorseTextChanged = { [weak self] in self?.onMorseTextChanged?($0) }
         model.onFinishChanged = { [weak self] in self?.onPreviewFinishChanged?($0) }
+        model.onLidChanged = { [weak self] lid in
+            self?.onPreviewLidChanged?(lid)
+            // The other lid is a slightly different shape, and the panel is as tall as its content.
+            DispatchQueue.main.async { [weak self] in self?.sizeToFitContent() }
+        }
         model.onBrightnessDragEnded = { [weak self] in self?.brightnessDragEnded() }
     }
 
@@ -223,6 +230,8 @@ private final class PanelModel {
     var morseCharacter: Int?
     /// The finish the live view is painted in: this Mac's, unless the user picked the other.
     var finish: MacFinish
+    /// The lid the live view is shaped as: this Mac's, unless the user picked the other.
+    var lid: MacLid
 
     var onLogoSwitched: ((Bool) -> Void)?
     var onBrightnessChanged: ((Double) -> Void)?
@@ -237,13 +246,15 @@ private final class PanelModel {
     var onMorseLoopsChanged: ((Bool) -> Void)?
     var onMorseTextChanged: ((String) -> Void)?
     var onFinishChanged: ((MacFinish) -> Void)?
+    var onLidChanged: ((MacLid) -> Void)?
     /// The brightness slider let go (or its drag was cancelled), so held-back state can go in.
     var onBrightnessDragEnded: (() -> Void)?
 
     private(set) var isDraggingBrightness = false
 
-    init(finish: MacFinish) {
+    init(finish: MacFinish, lid: MacLid = .sixteen) {
         self.finish = finish
+        self.lid = lid
         // Nothing is known until the first update, which always applies: an empty panel is drawn once.
         let status = LogoStatus(isSupported: false, setting: nil, source: .daemon, isLit: false, outputLevel: 0)
         let state = PanelState(status: status, canControlDirectly: false, effect: .none, brightness: 1)
@@ -359,6 +370,12 @@ private final class PanelModel {
         onFinishChanged?(finish)
     }
 
+    func setLid(_ lid: MacLid) {
+        guard lid != self.lid else { return }
+        self.lid = lid
+        onLidChanged?(lid)
+    }
+
     func editMorse(_ text: String) {
         setMorseText(text)
         onMorseTextChanged?(morseText)
@@ -431,15 +448,21 @@ private struct PanelContent: View {
                     VStack(spacing: 10) {
                         // As wide as the card, its sides the card's own padding away, and tall as its
                         // shape makes it: no room left over either side.
-                        LogoPreviewView(preview: preview, finish: model.finish)
-                            .frame(width: LogoPreview.width, height: LogoPreview.height)
-                        // Silver and space black, as the MacBook Pro comes: the one this Mac is, unless the
-                        // user would rather see the other. In the tabs' bar, where the picker always was.
-                        OptionTabs(options: [
-                            OptionTabs<MacFinish>.Option(value: .silver, title: "Silver"),
-                            OptionTabs<MacFinish>.Option(value: .spaceBlack, title: "Space Black"),
-                        ], selection: model.finish, choose: { model.setFinish($0) }, spreads: false,
-                           surface: .card)
+                        LogoPreviewView(preview: preview, finish: model.finish, lid: model.lid)
+                            .frame(width: LogoPreview.width, height: LogoPreview.height(for: model.lid))
+                        // Silver and space black, then 14 and 16 inch, as the MacBook Pro comes: the ones
+                        // this Mac is, unless the user would rather see the others. In the tabs' bar.
+                        HStack(spacing: PanelMetrics.labelSpacing + 2) {
+                            OptionTabs(options: [
+                                OptionTabs<MacFinish>.Option(value: .silver, title: "Silver"),
+                                OptionTabs<MacFinish>.Option(value: .spaceBlack, title: "Space Black"),
+                            ], selection: model.finish, choose: { model.setFinish($0) }, spreads: false,
+                               surface: .card)
+                            OptionTabs(options: MacLid.allCases.map {
+                                OptionTabs<MacLid>.Option(value: $0, title: $0.title)
+                            }, selection: model.lid, choose: { model.setLid($0) }, spreads: false,
+                               surface: .card)
+                        }
                     }
                     .padding(.vertical, 9)
                 }
@@ -889,9 +912,13 @@ private struct GlassMaterial<S: InsettableShape>: View {
 private struct LogoPreviewView: NSViewRepresentable {
     let preview: LogoPreview
     let finish: MacFinish
+    let lid: MacLid
 
     func makeNSView(context: Context) -> LogoPreview { preview }
-    func updateNSView(_ view: LogoPreview, context: Context) { view.setFinish(finish) }
+    func updateNSView(_ view: LogoPreview, context: Context) {
+        view.setFinish(finish)
+        view.setLid(lid)
+    }
 }
 
 private extension View {
@@ -908,12 +935,26 @@ private extension View {
 /// A live view of the logo: the back of the MacBook Pro in its own finish (space black or silver) and
 /// in the lid's real proportions, with the logo glowing on it.
 private final class LogoPreview: NSView {
-    /// Measured off Apple's own lid shots (14 and 16-inch): the lid as photographed, machined edge
-    /// to machined edge, is 1.45 times as wide as tall.
-    static let aspectRatio: CGFloat = 1.45
     /// How the panel draws the live view: as wide as a card's inside, the lid's shape giving the height.
     static let width: CGFloat = PanelMetrics.liveViewWidth
-    static var height: CGFloat { (width / aspectRatio).rounded() }
+    static func height(for lid: MacLid) -> CGFloat { (width / geometry(for: lid).aspect).rounded() }
+    static var height: CGFloat { height(for: .sixteen) }
+
+    /// One lid's shape, as photographed edge to edge, all shares of the lid's height. Measured off
+    /// Apple's own lid shots of both sizes: the 14-inch is a shade squarer and carries the same-size
+    /// logo on a smaller lid; its corners are milled the same few millimetres, so they read larger.
+    private struct LidGeometry {
+        let aspect: CGFloat
+        let corner: CGFloat
+        let mark: CGFloat
+        let lift: CGFloat
+    }
+    private static func geometry(for lid: MacLid) -> LidGeometry {
+        switch lid {
+        case .fourteen: LidGeometry(aspect: 1.436, corner: 0.040, mark: 0.253, lift: 0.020)
+        case .sixteen: LidGeometry(aspect: 1.456, corner: 0.048, mark: 0.225, lift: 0.016)
+        }
+    }
     private let lid = CAGradientLayer()
     /// The logo as it looks unlit: polished metal in the lid, catching the light above. Drawn to an
     /// image (see `markImage`) rather than layered gradients, so the reflections can be composed.
@@ -924,11 +965,15 @@ private final class LogoPreview: NSView {
     /// the front edge along the bottom. Hairlines, each fading away from its edge.
     private let topRim = CAGradientLayer()
     private let bottomLip = CAGradientLayer()
-    /// How tall the lid was last drawn at, and in which finish, so both are only set when they change.
+    /// How tall the lid was last drawn at, which finish, and which lid's shape, so all are only
+    /// set when they change.
     private var drawnHeight: CGFloat = 0
     private var drawnFinish: MacFinish?
+    private var drawnLid: MacLid
+    private var laidOutLid: MacLid?
 
-    init(finish: MacFinish) {
+    init(finish: MacFinish, lid lidSize: MacLid = .sixteen) {
+        drawnLid = lidSize
         super.init(frame: .zero)
         wantsLayer = true
         lid.cornerCurve = .continuous
@@ -953,22 +998,32 @@ private final class LogoPreview: NSView {
         setAccessibilityLabel("Live view of the Apple logo")
     }
 
+    /// Shows the other lid's shape. The frame's height follows it (the panel refits itself), so this
+    /// only asks for a layout; `layout()` notices the shape changed even when the height didn't.
+    func setLid(_ lid: MacLid) {
+        guard lid != drawnLid else { return }
+        drawnLid = lid
+        needsLayout = true
+    }
+
     override func layout() {
         super.layout()
         let height = bounds.height
-        guard height > 0, height != drawnHeight else { return }
+        guard height > 0, height != drawnHeight || laidOutLid != drawnLid else { return }
         drawnHeight = height
-        let size = NSSize(width: (height * Self.aspectRatio).rounded(), height: height)
+        laidOutLid = drawnLid
+        let g = Self.geometry(for: drawnLid)
+        let size = NSSize(width: (height * g.aspect).rounded(), height: height)
         withoutAnimation {
             lid.frame = NSRect(x: (bounds.width - size.width) / 2, y: 0, width: size.width, height: size.height)
-            // The corner Apple mills: ~3% of the lid's width across its shots, as a quarter circle.
-            lid.cornerRadius = height * 0.045
+            // The corner Apple mills: the same few millimetres on both lids, as a quarter circle.
+            lid.cornerRadius = height * g.corner
             lid.borderWidth = height * 0.006
-            // The mark on a real lid stands a little under a fifth of the lid's way up, its centre
-            // just above the middle (measured off the lid shots: 0.19 high, 1.6% above centre).
-            let logoSize = (height * 0.225).rounded()
+            // The mark on a real lid stands about a fifth of the lid's way up, its centre just
+            // above the middle; the smaller lid carries the same-size logo, so it's larger on it.
+            let logoSize = (height * g.mark).rounded()
             let logoFrame = NSRect(x: (size.width - logoSize) / 2,
-                                   y: (size.height - logoSize) / 2 - height * 0.016,
+                                   y: (size.height - logoSize) / 2 - height * g.lift,
                                    width: logoSize, height: logoSize)
             mark.frame = logoFrame
             logo.frame = logoFrame
@@ -1490,7 +1545,8 @@ private extension LogoPreview {
 
     /// Where the lid is drawn in the view (centred at the top, as `layout()` places it).
     var renderedLidFrame: NSRect {
-        let size = NSSize(width: (bounds.height * Self.aspectRatio).rounded(), height: bounds.height)
+        let aspect = Self.geometry(for: drawnLid).aspect
+        let size = NSSize(width: (bounds.height * aspect).rounded(), height: bounds.height)
         return NSRect(x: (bounds.width - size.width) / 2, y: 0, width: size.width, height: size.height)
     }
 

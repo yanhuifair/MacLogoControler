@@ -33,7 +33,7 @@
       At the top of the menu, or Option-click the menu bar icon. The logo fades out and back in smoothly, with no password.
       <br><br>
       <b>Live view</b><br>
-      Your lid as it is right now, in its own finish (space black or silver, and you can pick the other), following effects and changes made elsewhere.
+      Your lid as it is right now, in its own finish and size (space black or silver, 14 or 16 inch, and you can pick the others), following effects and changes made elsewhere.
       <br><br>
       <b>Brightness</b><br>
       A slider that eases the logo onto each level. Your display's brightness no longer changes it; it still adapts to the light around you. Turn on Automatic and the logo follows the display's brightness instead, so it dims with the screen.
