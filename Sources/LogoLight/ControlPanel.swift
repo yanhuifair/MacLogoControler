@@ -545,12 +545,17 @@ private struct PanelContent: View {
                 .help(model.isSendingMorse ? "Stop" : "Play")
                 .accessibilityLabel("Play Morse code")
 
-                Toggle(isOn: Binding(get: { model.loops }, set: { model.setLoops($0) })) {
-                    Image(systemName: "repeat")
-                }
-                .toggleStyle(.button)
-                .help("Repeat until stopped")
-                .accessibilityLabel("Repeat Morse code")
+                // Repeat, as the switches above it: the symbol says what it repeats, the switch whether it does.
+                Image(systemName: "repeat")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(.secondary)
+                    .help("Repeat until stopped")
+                Toggle("Repeat until stopped", isOn: Binding(get: { model.loops }, set: { model.setLoops($0) }))
+                    .labelsHidden()
+                    .toggleStyle(.switch)
+                    .controlSize(.small)
+                    .help("Repeat until stopped")
+                    .accessibilityLabel("Repeat Morse code")
             }
             .padding(.horizontal, PanelMetrics.iconInset)
             .frame(height: PanelMetrics.rowHeight)
