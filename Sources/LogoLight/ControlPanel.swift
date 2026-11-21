@@ -970,14 +970,16 @@ private final class LogoPreview: NSView {
     func setFinish(_ finish: MacFinish) {
         guard finish != drawnFinish else { return }
         drawnFinish = finish
+        // Measured off Apple's own lid shots of the 14 and 16-inch (identical per finish):
+        // silver 227→176, space black 98→48.
         let (top, bottom, edge, markOpacity): (NSColor, NSColor, NSColor, Float) = switch finish {
         case .spaceBlack:
-            (NSColor(srgbRed: 0.17, green: 0.17, blue: 0.18, alpha: 1),
-             NSColor(srgbRed: 0.11, green: 0.11, blue: 0.12, alpha: 1),
+            (NSColor(srgbRed: 0.38, green: 0.38, blue: 0.39, alpha: 1),
+             NSColor(srgbRed: 0.185, green: 0.185, blue: 0.195, alpha: 1),
              NSColor(white: 1, alpha: 0.14), 1)
         case .silver:
-            (NSColor(srgbRed: 0.86, green: 0.865, blue: 0.87, alpha: 1),
-             NSColor(srgbRed: 0.72, green: 0.725, blue: 0.735, alpha: 1),
+            (NSColor(srgbRed: 0.89, green: 0.895, blue: 0.90, alpha: 1),
+             NSColor(srgbRed: 0.69, green: 0.695, blue: 0.71, alpha: 1),
              NSColor(white: 0, alpha: 0.16), 1)
         }
         withoutAnimation {
@@ -1003,11 +1005,10 @@ private final class LogoPreview: NSView {
         mark.contents = Self.markImage(finish: finish, size: logoSize, scale: scale)
     }
 
-    /// Paints the unlit mark the way polished metal really reads: as a mirror with a hard edge
-    /// across it. Below and left of the edge is the dark side, reflecting the room behind the lid;
-    /// above and right is the bright side, reflecting the light above — brightest at the top and
-    /// dimming towards the bottom, where it catches the lid itself. The edge slants with the mark,
-    /// so the leaf falls on the bright side. All of it is cut to the logo's own shape.
+    /// Paints the unlit mark as Apple's own lid shots show it: polished black glass. The mark is
+    /// nearly black throughout, with a faint grey sheen above a shallow diagonal running up from
+    /// its lower left to the top of its right side — hard-edged, brighter towards the body's crown
+    /// and fading to black towards the foot, with the leaf catching the sheen too.
     private static func markImage(finish: MacFinish, size: CGFloat, scale: CGFloat) -> NSImage? {
         let pixels = max(Int((size * scale).rounded()), 8)
         let side = CGFloat(pixels)
@@ -1032,34 +1033,33 @@ private final class LogoPreview: NSView {
         guard let stencil = maskContext.makeImage() else { return nil }
         out.clip(to: rect, mask: stencil)
 
-        let mirror: (dark: CGFloat, brightLow: CGFloat, brightHigh: CGFloat)
-        mirror = switch finish {
-        case .spaceBlack: (0.025, 0.28, 0.78)
-        case .silver: (0.115, 0.56, 0.97)
+        // Measured off the lid shots: black side ~0.01, sheen peaking at the body's crown —
+        // 0.24 grey on silver, 0.17 on space black — and fading down into the black.
+        let glossy: (black: CGFloat, low: CGFloat, crown: CGFloat)
+        glossy = switch finish {
+        case .spaceBlack: (0.01, 0.03, 0.17)
+        case .silver: (0.01, 0.04, 0.235)
         }
-        // The dark side: what the metal reflects behind and below, flat and nearly black.
-        out.setFillColor(NSColor(white: mirror.dark, alpha: 1).cgColor)
+        out.setFillColor(NSColor(white: glossy.black, alpha: 1).cgColor)
         out.fill(rect)
-        // The bright side, to the right of an edge slanting a good deal as it descends — from
-        // below the leaf's left across the top to past the middle at the bottom, a horizon
-        // tipped on its side. Measured off a real lid: top at ~0.3 of the width, bottom at ~0.6.
+        // The sheen is everything above the diagonal, which runs up from the lower left of the
+        // mark's box to the top of its right side — so the crown and the leaf fall in it, and
+        // the two feet fall in the black below.
         out.saveGState()
         out.beginPath()
-        out.move(to: CGPoint(x: box.minX + box.width * 0.22, y: box.maxY))
+        out.move(to: CGPoint(x: box.minX + box.width * 0.06, y: box.minY + box.height * 0.12))
+        out.addLine(to: CGPoint(x: box.minX + box.width * 0.86, y: box.minY + box.height * 0.66))
         out.addLine(to: CGPoint(x: box.maxX, y: box.maxY))
-        out.addLine(to: CGPoint(x: box.maxX, y: box.minY))
-        out.addLine(to: CGPoint(x: box.minX + box.width * 0.62, y: box.minY))
+        out.addLine(to: CGPoint(x: box.minX, y: box.maxY))
         out.closePath()
         out.clip()
-        // The bright side's gradient is at its brightest by the top of the body and stays there,
-        // so the leaf and the body's crown glare; measured off a real lid, the fall from the
-        // crown to the foot is gentler than the height of the canvas it's drawn in.
-        if let bright = CGGradient(colorsSpace: space,
-                                   colors: [NSColor(white: mirror.brightLow, alpha: 1).cgColor,
-                                            NSColor(white: mirror.brightHigh, alpha: 1).cgColor,
-                                            NSColor(white: mirror.brightHigh, alpha: 1).cgColor] as CFArray,
-                                   locations: [0, 0.85, 1]) {
-            out.drawLinearGradient(bright, start: CGPoint(x: 0, y: box.minY), end: CGPoint(x: 0, y: box.maxY),
+        if let sheen = CGGradient(colorsSpace: space,
+                                  colors: [NSColor(white: glossy.low, alpha: 1).cgColor,
+                                           NSColor(white: glossy.crown * 0.62, alpha: 1).cgColor,
+                                           NSColor(white: glossy.crown, alpha: 1).cgColor,
+                                           NSColor(white: glossy.crown * 0.8, alpha: 1).cgColor] as CFArray,
+                                  locations: [0, 0.45, 0.78, 1]) {
+            out.drawLinearGradient(sheen, start: CGPoint(x: 0, y: box.minY), end: CGPoint(x: 0, y: box.maxY),
                                    options: [.drawsBeforeStartLocation, .drawsAfterEndLocation])
         }
         out.restoreGState()
